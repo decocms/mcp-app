@@ -90,7 +90,7 @@ TOOL=hello vite build
 
 - **Runtime**: [Bun](https://bun.sh)
 - **Server**: [@decocms/runtime](https://github.com/decocms/runtime) MCP server
-- **UI**: React 19 + [TanStack Router](https://tanstack.com/router) (hash-based)
+- **UI**: React 19 + [TanStack Router](https://tanstack.com/router) (hash-based) + [TanStack Query](https://tanstack.com/query)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com) v4 + [shadcn/ui](https://ui.shadcn.com)
 - **MCP Apps**: [@modelcontextprotocol/ext-apps](https://www.npmjs.com/package/@modelcontextprotocol/ext-apps) SDK
 - **Build**: [Vite](https://vitejs.dev) + [vite-plugin-singlefile](https://github.com/nickreese/vite-plugin-singlefile)
