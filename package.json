@@ -6,7 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "concurrently -k \"bun run dev:api\" \"bun run dev:web\"",
-		"dev:api": "PORT=3001 bun run --hot api/main.ts",
+		"dev:api": "bun run --hot api/main.ts",
 		"dev:web": "TOOL=hello vite build --watch",
 		"build:web": "TOOL=hello vite build",
 		"build:server": "NODE_ENV=production bun build api/main.ts --target=bun --minify --outfile=dist/server/main.js",
