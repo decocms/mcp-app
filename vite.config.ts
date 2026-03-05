@@ -5,7 +5,15 @@ import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
 export default defineConfig({
-	plugins: [react(), tailwindcss(), viteSingleFile()],
+	plugins: [
+		react({
+			babel: {
+				plugins: ["babel-plugin-react-compiler"],
+			},
+		}),
+		tailwindcss(),
+		viteSingleFile(),
+	],
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "./web"),
