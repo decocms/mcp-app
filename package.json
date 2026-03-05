@@ -7,8 +7,8 @@
 	"scripts": {
 		"dev": "concurrently -k \"bun run dev:api\" \"bun run dev:web\"",
 		"dev:api": "bun run --hot api/main.ts",
-		"dev:web": "TOOL=hello vite build --watch",
-		"build:web": "TOOL=hello vite build",
+		"dev:web": "vite build --watch",
+		"build:web": "vite build",
 		"build:server": "NODE_ENV=production bun build api/main.ts --target=bun --minify --outfile=dist/server/main.js",
 		"build": "bun run build:web && bun run build:server",
 		"ci:check": "bunx biome ci .",

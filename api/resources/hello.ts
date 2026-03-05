@@ -9,7 +9,7 @@ const RESOURCE_MIME_TYPE = "text/html;profile=mcp-app";
 function getDistPath(): string {
 	const IS_PRODUCTION = process.env.NODE_ENV === "production";
 	const projectRoot = join(import.meta.dir, IS_PRODUCTION ? "../.." : "../..");
-	return join(projectRoot, "dist", "client", "hello.html");
+	return join(projectRoot, "dist", "client", "index.html");
 }
 
 export const helloAppResource = (_env: Env) =>

@@ -16,8 +16,7 @@
 		"noEmit": true,
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./web/*"],
-			"@tool/*": ["./web/tools/hello/*"]
+			"@/*": ["./web/*"]
 		}
 	},
 	"include": ["api/**/*", "web/**/*"],

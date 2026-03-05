@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import { withRuntime } from "@decocms/runtime";
 import { helloAppResource } from "./resources/hello.ts";
 import { tools } from "./tools/index.ts";
@@ -8,10 +7,6 @@ import { type Env, StateSchema } from "./types/env.ts";
 type Fetcher = (req: Request, ...args: any[]) => Response | Promise<Response>;
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
-
-const PROJECT_ROOT = join(import.meta.dir, IS_PRODUCTION ? ".." : "..");
-const DIST_CLIENT_DIR = join(PROJECT_ROOT, "dist", "client");
 
 const colors = {
 	reset: "\x1b[0m",
@@ -29,20 +24,6 @@ const colors = {
 	requestId: "\x1b[94m",
 };
 
-const MIME_TYPES: Record<string, string> = {
-	".html": "text/html",
-	".css": "text/css",
-	".js": "application/javascript",
-	".json": "application/json",
-	".png": "image/png",
-	".jpg": "image/jpeg",
-	".jpeg": "image/jpeg",
-	".svg": "image/svg+xml",
-	".ico": "image/x-icon",
-	".woff": "font/woff",
-	".woff2": "font/woff2",
-};
-
 function getStatusColor(status: number): string {
 	if (status >= 500) return colors.serverError;
 	if (status >= 400) return colors.clientError;
@@ -52,32 +33,6 @@ function getStatusColor(status: number): string {
 
 function getMethodColor(method: string): string {
 	return colors[method as keyof typeof colors] || colors.reset;
-}
-
-function getContentType(filePath: string): string {
-	const ext = filePath.slice(filePath.lastIndexOf("."));
-	return MIME_TYPES[ext] ?? "application/octet-stream";
-}
-
-async function serveFile(
-	baseDir: string,
-	relativePath: string,
-	headers?: HeadersInit,
-): Promise<Response | null> {
-	const safePath = relativePath.replace(/^\/+/, "");
-	if (safePath.includes(".."))
-		return new Response("Forbidden", { status: 403 });
-	const filePath = join(baseDir, safePath);
-
-	const file = Bun.file(filePath);
-	if (!(await file.exists())) return null;
-
-	return new Response(file, {
-		headers: {
-			"content-type": getContentType(filePath),
-			...headers,
-		},
-	});
 }
 
 const runtime = withRuntime<Env, typeof StateSchema>({
@@ -138,44 +93,11 @@ function withMcpApiRoute(fetcher: Fetcher): Fetcher {
 	};
 }
 
-function withFrontend(fetcher: Fetcher): Fetcher {
-	return async (req: Request, ...args) => {
-		const url = new URL(req.url);
-		if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
-			return fetcher(req, ...args);
-		}
-
-		if (!IS_PRODUCTION) {
-			return new Response("Not Found", { status: 404 });
-		}
-
-		if (req.method !== "GET" && req.method !== "HEAD") {
-			return fetcher(req, ...args);
-		}
-
-		// Convention: /<tool_name> serves dist/client/<tool_name>.html
-		const toolName = url.pathname.slice(1) || "hello";
-		if (toolName && /^[a-z0-9_-]+$/.test(toolName)) {
-			const html = await serveFile(DIST_CLIENT_DIR, `${toolName}.html`, {
-				"cache-control": "no-cache",
-			});
-			if (html) return html;
-		}
-
-		const asset = await serveFile(DIST_CLIENT_DIR, url.pathname.slice(1), {
-			"cache-control": "public, max-age=31536000, immutable",
-		});
-		if (asset) return asset;
-
-		return fetcher(req, ...args);
-	};
-}
-
 Bun.serve({
 	idleTimeout: 0,
 	hostname: "0.0.0.0",
 	port: PORT,
-	fetch: withLogging(withFrontend(withMcpApiRoute(runtime.fetch))),
+	fetch: withLogging(withMcpApiRoute(runtime.fetch)),
 });
 
 console.log(`MCP App server started on http://localhost:${PORT}`);

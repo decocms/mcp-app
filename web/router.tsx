@@ -6,15 +6,46 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import ToolPage from "@tool/index.tsx";
-import { useMcpHostContext } from "./context.tsx";
+import { useMcpHostContext, useMcpState } from "./context.tsx";
+import HelloPage from "./tools/hello/index.tsx";
+
+const TOOL_PAGES: Record<string, React.ComponentType> = {
+	hello_world: HelloPage,
+};
+
+function ToolRouter() {
+	const { toolName } = useMcpState();
+
+	if (!toolName) {
+		return (
+			<div className="flex items-center justify-center min-h-dvh p-6">
+				<div className="flex items-center gap-3 text-muted-foreground">
+					<span className="w-4 h-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
+					<span className="text-sm">Connecting to host...</span>
+				</div>
+			</div>
+		);
+	}
+
+	const Page = TOOL_PAGES[toolName];
+
+	if (!Page) {
+		return (
+			<div className="flex items-center justify-center min-h-dvh p-6">
+				<p className="text-sm text-destructive">Unknown tool: {toolName}</p>
+			</div>
+		);
+	}
+
+	return <Page />;
+}
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
 const indexRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/",
-	component: ToolPage,
+	component: ToolRouter,
 });
 
 const routeTree = rootRoute.addChildren([indexRoute]);

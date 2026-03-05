@@ -25,10 +25,11 @@ export function McpProvider({ children }: { children: ReactNode }) {
 
 	const onAppCreated = useCallback((app: App) => {
 		app.ontoolinput = (params) => {
-			setState({
+			setState((prev) => ({
+				...prev,
 				status: "tool-input",
 				toolInput: params.arguments,
-			});
+			}));
 		};
 
 		app.ontoolresult = (result) => {
@@ -37,17 +38,18 @@ export function McpProvider({ children }: { children: ReactNode }) {
 				const errorText =
 					(textBlock?.type === "text" ? textBlock.text : undefined) ??
 					"Tool returned an error";
-				setState({ status: "error", error: errorText });
+				setState((prev) => ({ ...prev, status: "error", error: errorText }));
 				return;
 			}
-			setState({
+			setState((prev) => ({
+				...prev,
 				status: "tool-result",
 				toolResult: result.structuredContent,
-			});
+			}));
 		};
 
 		app.ontoolcancelled = () => {
-			setState({ status: "tool-cancelled" });
+			setState((prev) => ({ ...prev, status: "tool-cancelled" }));
 		};
 
 		app.onerror = (err) => {
@@ -72,7 +74,8 @@ export function McpProvider({ children }: { children: ReactNode }) {
 	if (isConnected && state.status === "initializing") {
 		const ctx = app?.getHostContext();
 		if (ctx) setHostContext(ctx);
-		setState({ status: "connected" });
+		const toolName = ctx?.toolInfo?.tool.name;
+		setState({ status: "connected", toolName });
 	}
 
 	return (

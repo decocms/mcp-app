@@ -8,6 +8,7 @@ export type McpStatus =
 
 export interface McpState<TInput = unknown, TResult = unknown> {
 	status: McpStatus;
+	toolName?: string;
 	error?: string;
 	toolInput?: TInput;
 	toolResult?: TResult;
