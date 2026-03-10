@@ -5,11 +5,28 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card.tsx";
-import { useMcpState } from "@/context.tsx";
+import { useMcpApp, useMcpState } from "@/context.tsx";
+import { useEffect, useRef } from "react";
 import type { HelloInput, HelloOutput } from "../../../api/tools/hello.ts";
 
 export default function HelloPage() {
 	const state = useMcpState<HelloInput, HelloOutput>();
+	const app = useMcpApp();
+	const sentRef = useRef(false);
+
+	useEffect(() => {
+		if (
+			state.status === "tool-result" &&
+			state.toolResult?.greeting &&
+			!sentRef.current
+		) {
+			sentRef.current = true;
+			app?.sendMessage({
+				role: "user",
+				content: [{ type: "text", text: state.toolResult.greeting }],
+			});
+		}
+	}, [state.status, state.toolResult, app]);
 
 	if (state.status === "initializing") {
 		return (
