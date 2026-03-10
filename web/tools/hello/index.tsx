@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge.tsx";
 import {
 	Card,
@@ -6,7 +7,6 @@ import {
 	CardTitle,
 } from "@/components/ui/card.tsx";
 import { useMcpApp, useMcpState } from "@/context.tsx";
-import { useEffect, useRef } from "react";
 import type { HelloInput, HelloOutput } from "../../../api/tools/hello.ts";
 
 export default function HelloPage() {
