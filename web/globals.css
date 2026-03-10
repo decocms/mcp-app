@@ -56,6 +56,23 @@
 	--sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
+@layer base {
+	button,
+	a,
+	select,
+	summary,
+	[role="button"],
+	[role="tab"],
+	[role="checkbox"],
+	[role="radio"],
+	[role="switch"],
+	[role="menuitem"],
+	[role="option"],
+	label[for] {
+		cursor: pointer;
+	}
+}
+
 @theme inline {
 	/* Core colors — mapped from host variables */
 	--color-background: var(--color-background-primary);
