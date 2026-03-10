@@ -15,11 +15,12 @@ export default function HelloPage() {
 	const sentRef = useRef(false);
 
 	useEffect(() => {
-		if (
-			state.status === "tool-result" &&
-			state.toolResult?.greeting &&
-			!sentRef.current
-		) {
+		if (state.status !== "tool-result") {
+			sentRef.current = false;
+			return;
+		}
+
+		if (state.toolResult?.greeting && !sentRef.current) {
 			sentRef.current = true;
 			app?.sendMessage({
 				role: "user",
