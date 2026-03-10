@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge.tsx";
+import { Button } from "@/components/ui/button.tsx";
 import {
 	Card,
 	CardContent,
@@ -12,22 +12,6 @@ import type { HelloInput, HelloOutput } from "../../../api/tools/hello.ts";
 export default function HelloPage() {
 	const state = useMcpState<HelloInput, HelloOutput>();
 	const app = useMcpApp();
-	const sentRef = useRef(false);
-
-	useEffect(() => {
-		if (state.status !== "tool-result") {
-			sentRef.current = false;
-			return;
-		}
-
-		if (state.toolResult?.greeting && !sentRef.current) {
-			sentRef.current = true;
-			app?.sendMessage({
-				role: "user",
-				content: [{ type: "text", text: state.toolResult.greeting }],
-			});
-		}
-	}, [state.status, state.toolResult, app]);
 
 	if (state.status === "initializing") {
 		return (
@@ -112,12 +96,28 @@ export default function HelloPage() {
 						{state.toolResult?.greeting}
 					</CardTitle>
 				</CardHeader>
-				<CardContent className="space-y-2">
+				<CardContent className="space-y-4">
 					{state.toolResult?.timestamp ? (
 						<p className="text-xs text-muted-foreground">
 							{new Date(state.toolResult.timestamp).toLocaleString()}
 						</p>
 					) : null}
+					<Button
+						onClick={() => {
+							const name = state.toolInput?.name ?? "there";
+							app?.sendMessage({
+								role: "user",
+								content: [
+									{
+										type: "text",
+										text: `Please greet ${name} warmly and tell them a little about yourself — who you are, what you can help with, and something interesting about how you work.`,
+									},
+								],
+							});
+						}}
+					>
+						Send Message
+					</Button>
 				</CardContent>
 			</Card>
 		</div>
