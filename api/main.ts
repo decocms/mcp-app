@@ -1,4 +1,5 @@
 import { withRuntime } from "@decocms/runtime";
+import { prompts } from "./prompts/index.ts";
 import { helloAppResource } from "./resources/hello.ts";
 import { tools } from "./tools/index.ts";
 import { type Env, StateSchema } from "./types/env.ts";
@@ -40,6 +41,7 @@ const runtime = withRuntime<Env, typeof StateSchema>({
 		state: StateSchema,
 	},
 	tools,
+	prompts,
 	resources: [helloAppResource],
 });
 
