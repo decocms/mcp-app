@@ -5,7 +5,7 @@ import type { Env } from "../types/env.ts";
 export const HELLO_RESOURCE_URI = "ui://mcp-app/hello";
 
 export const helloInputSchema = z.object({
-	name: z.string().describe("The name to greet"),
+	name: z.string().optional().describe("The name to greet"),
 });
 
 export type HelloInput = z.infer<typeof helloInputSchema>;
@@ -33,8 +33,9 @@ export const helloTool = (_env: Env) =>
 		},
 		execute: async ({ context }) => {
 			const { name } = context;
+			const displayName = name || "World";
 			return {
-				greeting: `Hello, ${name}! Welcome to MCP Apps on deco.`,
+				greeting: `Hello, ${displayName}! Welcome to MCP Apps on deco.`,
 				timestamp: new Date().toISOString(),
 			};
 		},
