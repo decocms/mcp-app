@@ -102,5 +102,9 @@ Bun.serve({
 	fetch: withLogging(withMcpApiRoute(runtime.fetch)),
 });
 
-console.log(`MCP App server started on http://localhost:${PORT}`);
-console.log(`- MCP endpoint: http://localhost:${PORT}/api/mcp`);
+const slug = process.env.WORKTREE_SLUG;
+const baseUrl = slug ? `http://${slug}.localhost` : `http://localhost:${PORT}`;
+
+console.log("");
+console.log(`${colors.mcp}MCP App${colors.reset}: ${baseUrl}/api/mcp`);
+console.log("");
