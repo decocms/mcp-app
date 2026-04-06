@@ -165,7 +165,7 @@ The workflow builds a payload from your config. Here's how fields map:
 | `data.title` | `friendlyName` or `name` |
 | `data.description` | `description` or `null` |
 | `data.is_public` | `!(unlisted \|\| metadata.mesh_unlisted)` |
-| `data._meta["mcp.mesh"].verified` | `metadata.official` or `official` |
+| `data._meta["mcp.mesh"].verified` | `official` |
 | `data._meta["mcp.mesh"].tags` | `metadata.tags` |
 | `data._meta["mcp.mesh"].categories` | First element of `metadata.categories` |
 | `data._meta["mcp.mesh"].friendly_name` | `friendlyName` |
