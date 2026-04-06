@@ -1,0 +1,181 @@
+name: Publish to Registry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deco.json'
+      - 'app.json'
+      - 'README.md'
+      - '.github/workflows/publish-registry.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (print payload without publishing)'
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Publish to mesh registry
+        env:
+          PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
+          PUBLISH_API_KEY: ${{ secrets.PUBLISH_API_KEY }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          node << 'SCRIPT'
+          const fs = require("fs");
+          const path = require("path");
+          const { execSync } = require("child_process");
+
+          // ── Read config (prefer deco.json, fallback app.json) ──
+
+          let configPath = "deco.json";
+          if (!fs.existsSync(configPath)) {
+            configPath = "app.json";
+          }
+          if (!fs.existsSync(configPath)) {
+            console.log("No deco.json or app.json found, skipping publish.");
+            process.exit(0);
+          }
+
+          const app = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+          console.log(`Using config from ${configPath}`);
+
+          // ── Read README (optional, max 50KB) ──
+
+          let readme = null;
+          if (fs.existsSync("README.md")) {
+            const content = fs.readFileSync("README.md", "utf-8").trim();
+            if (content) readme = content.slice(0, 50000);
+          }
+
+          // ── Resolve requester (config > git committer) ──
+
+          let requesterName = app.requester?.name;
+          let requesterEmail = app.requester?.email;
+
+          if (!requesterName || !requesterEmail) {
+            try {
+              const gitInfo = execSync('git log -1 --format="%an|||%ae"', { encoding: "utf-8" }).trim();
+              const [gitName, gitEmail] = gitInfo.split("|||");
+              if (!requesterName && gitName) requesterName = gitName;
+              if (!requesterEmail && gitEmail) requesterEmail = gitEmail;
+            } catch {
+              // fallback defaults
+              if (!requesterName) requesterName = "unknown";
+              if (!requesterEmail) requesterEmail = "unknown@example.com";
+            }
+          }
+
+          // ── Build payload ──
+
+          const id = `${app.scopeName}/${app.name}`;
+          const title = app.friendlyName || app.name;
+          const isOfficial = app.metadata?.official ?? app.official ?? false;
+          const hasRemote = app.connection?.type !== "BINDING" && Boolean(app.connection?.url);
+          const hasOAuth = Boolean(app.connection?.configSchema);
+          const isPublic = !(app.unlisted ?? app.metadata?.mesh_unlisted ?? false);
+
+          const meshMeta = {
+            verified: isOfficial,
+            friendly_name: app.friendlyName || null,
+            short_description: (app.metadata?.short_description || "").slice(0, 160) || null,
+            owner: app.scopeName,
+            has_remote: hasRemote,
+            has_oauth: hasOAuth,
+          };
+
+          if (app.metadata?.tags?.length) meshMeta.tags = app.metadata.tags;
+          if (app.metadata?.categories?.length) meshMeta.categories = [app.metadata.categories[0]];
+          if (readme) {
+            meshMeta.readme = readme;
+          } else if (app.metadata?.mesh_description) {
+            meshMeta.readme = app.metadata.mesh_description;
+          }
+          if (app.tools?.length) {
+            meshMeta.tools = app.tools.map(t => ({ name: t.name, description: t.description || null }));
+          }
+
+          const remotes = [];
+          if (hasRemote && app.connection?.url) {
+            remotes.push({
+              type: app.connection.type || "HTTP",
+              url: app.connection.url,
+              name: app.name,
+              title,
+              description: app.description,
+            });
+          }
+
+          const server = {
+            name: app.name,
+            title,
+            description: app.description,
+          };
+          if (app.icon) server.icons = [{ src: app.icon }];
+          if (remotes.length) server.remotes = remotes;
+          if (app.requester?.repository) server.repository = { url: app.requester.repository };
+
+          const payload = {
+            data: {
+              id,
+              title,
+              description: app.description || null,
+              is_public: isPublic,
+              _meta: { "mcp.mesh": meshMeta },
+              server,
+            },
+            requester: {
+              name: requesterName,
+              email: requesterEmail,
+            },
+          };
+
+          // ── Dry run ──
+
+          if (process.env.DRY_RUN === "true") {
+            console.log("DRY RUN — payload:");
+            console.log(JSON.stringify(payload, null, 2));
+            process.exit(0);
+          }
+
+          // ── Publish ──
+
+          const publishUrl = process.env.PUBLISH_URL || "https://studio.decocms.com/org/deco/registry/publish-request";
+          const apiKey = process.env.PUBLISH_API_KEY || "";
+
+          console.log(`Publishing ${id} to ${publishUrl}`);
+
+          const headers = { "Content-Type": "application/json" };
+          if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+
+          fetch(publishUrl, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+          })
+            .then(async (res) => {
+              const body = await res.text();
+              if (res.status >= 200 && res.status < 300) {
+                console.log(`Published successfully (${res.status})`);
+                console.log(body);
+              } else if (res.status === 409) {
+                console.log(`Already registered (${res.status}), skipping.`);
+                console.log(body);
+              } else {
+                console.error(`Publish failed (${res.status}): ${body}`);
+                process.exit(1);
+              }
+            })
+            .catch((err) => {
+              console.error("Publish request failed:", err);
+              process.exit(1);
+            });
+          SCRIPT
