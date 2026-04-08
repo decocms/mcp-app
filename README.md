@@ -19,8 +19,9 @@ bun run dev
 ## Project Structure
 
 ```
-├── api/                        # MCP server (Bun)
-│   ├── main.ts                 # Server entry point with middleware
+├── api/                        # MCP server (platform-agnostic)
+│   ├── app.ts                  # App core — tools, resources, middleware
+│   ├── main.bun.ts             # Bun entrypoint (local dev)
 │   ├── tools/
 │   │   ├── index.ts            # Tool registry
 │   │   └── hello.ts            # Example tool (hello_world)
@@ -88,7 +89,7 @@ TOOL=hello vite build
 
 ## Tech Stack
 
-- **Runtime**: [Bun](https://bun.sh)
+- **Runtime**: [Bun](https://bun.sh) (default), deployable to any Web Standard runtime
 - **Server**: [@decocms/runtime](https://github.com/decocms/runtime) MCP server
 - **UI**: React 19 + [TanStack Router](https://tanstack.com/router) (hash-based) + [TanStack Query](https://tanstack.com/query)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com) v4 + [shadcn/ui](https://ui.shadcn.com)
@@ -98,15 +99,29 @@ TOOL=hello vite build
 
 ## How It Works
 
-1. The **MCP server** (`api/main.ts`) exposes tools and resources over the MCP protocol
-2. **Tools** perform actions and can link to a UI via `_meta.ui.resourceUri`
-3. **Resources** serve single-file HTML bundles with `mimeType: "text/html;profile=mcp-app"`
-4. The **MCP App UI** connects to the host via `@modelcontextprotocol/ext-apps`, receives tool input/results, and renders an interactive display
-5. Vite builds each tool UI into a self-contained HTML file (CSS + JS inlined) using the `TOOL` env var to select which `web/tools/<name>/` folder to bundle
+1. The **app core** (`api/app.ts`) defines tools, resources, and middleware as a platform-agnostic `fetch` handler
+2. A **platform entrypoint** (`api/main.bun.ts`) starts the server using the platform's API
+3. **Tools** perform actions and can link to a UI via `_meta.ui.resourceUri`
+4. **Resources** serve single-file HTML bundles with `mimeType: "text/html;profile=mcp-app"`
+5. The **MCP App UI** connects to the host via `@modelcontextprotocol/ext-apps`, receives tool input/results, and renders an interactive display
+6. Vite builds each tool UI into a self-contained HTML file (CSS + JS inlined) using the `TOOL` env var to select which `web/tools/<name>/` folder to bundle
 
 ## Deployment
 
-Publish to the deco mesh:
+### Multi-Platform
+
+The app uses a factory pattern that separates business logic (`api/app.ts`) from platform wiring. To deploy to a new platform, add a thin entrypoint file — see the [`add-deploy-target` skill](.claude/skills/add-deploy-target/SKILL.md) for step-by-step instructions.
+
+Supported targets out of the box:
+- **Bun** — `api/main.bun.ts` (default, used for local dev)
+
+Easy to add:
+- **Cloudflare Workers** — ~5 lines + `wrangler.toml`
+- **Deno** — ~5 lines
+- **Node.js** — ~5 lines + `@hono/node-server`
+- **AWS Lambda** — ~5 lines + `hono/aws-lambda`
+
+### Publish to deco
 
 1. Update `app.json` with your app's name, description, and connection URL
 2. Push to your repository — CI will validate the build

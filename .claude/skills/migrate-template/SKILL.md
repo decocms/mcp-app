@@ -43,7 +43,7 @@ Each subagent compares `<base>..template/main` for its file category, checks if 
 |---|----------|-----------------|
 | 1 | **Infrastructure** | `vite.config.ts`, `tsconfig.json`, `biome.json`, `package.json` scripts, `.github/workflows/*`, `scripts/*`, `index.html` |
 | 2 | **Dependencies** | `package.json` deps/devDeps — new, removed, version bumps (flag breaking major bumps) |
-| 3 | **Framework Core** | `web/context.tsx`, `web/router.tsx`, `web/types.ts`, `web/app.tsx`, `api/main.ts`, `api/types/env.ts` |
+| 3 | **Framework Core** | `web/context.tsx`, `web/router.tsx`, `web/types.ts`, `web/app.tsx`, `api/app.ts`, `api/types/env.ts` |
 | 4 | **UI Components** | `web/components/ui/*`, `web/lib/*`, `web/hooks/*`, CSS files (shadcn = usually safe to replace) |
 | 5 | **Docs & Skills** | `CLAUDE.md`, `AGENTS.md`, `README.md`, `.claude/skills/**/*` |
 
@@ -87,7 +87,7 @@ If checks fail, dispatch a subagent to diagnose: template incompatibility, bad m
 | Build Scripts | `package.json` scripts | Merge (user adds TOOL= entries) |
 | Dependencies | `package.json` deps/devDeps | Merge (keep user's, update template's) |
 | Framework Core | `web/context.tsx`, `web/router.tsx`, `web/types.ts`, `web/app.tsx` | Merge carefully |
-| Server Core | `api/main.ts`, `api/types/env.ts` | Merge carefully |
+| Server Core | `api/app.ts`, `api/types/env.ts` | Merge carefully |
 | UI Components | `web/components/ui/*`, `web/lib/*` | Replace (shadcn standard) |
 | Example Tool | `api/tools/hello.ts`, `web/tools/hello/` | Skip if user deleted |
 | User Tools | `api/tools/*`, `web/tools/*` (non-hello) | Never overwrite |
@@ -101,6 +101,6 @@ If checks fail, dispatch a subagent to diagnose: template incompatibility, bad m
 |---------|-----|
 | Overwriting TOOL_PAGES in router.tsx | Merge: keep user's entries, adopt structural changes |
 | Replacing package.json entirely | Merge deps/scripts separately |
-| Losing user's resources in api/main.ts | Merge: preserve user's resource registrations |
+| Losing user's resources in api/app.ts | Merge: preserve user's resource registrations |
 | Not running `bun install` after dep changes | Always install before type-checking |
 | Restoring files user intentionally deleted | Check git log for deletion before restoring |
