@@ -7,7 +7,9 @@ import { type Env, StateSchema } from "./types/env.ts";
 // biome-ignore lint/suspicious/noExplicitAny: runtime.fetch signature compatibility
 type Fetcher = (req: Request, ...args: any[]) => Response | Promise<Response>;
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
+// ---------------------------------------------------------------------------
+// Logging helpers
+// ---------------------------------------------------------------------------
 
 const colors = {
 	reset: "\x1b[0m",
@@ -20,7 +22,6 @@ const colors = {
 	redirect: "\x1b[36m",
 	clientError: "\x1b[33m",
 	serverError: "\x1b[31m",
-	mcp: "\x1b[35m",
 	duration: "\x1b[90m",
 	requestId: "\x1b[94m",
 };
@@ -36,14 +37,9 @@ function getMethodColor(method: string): string {
 	return colors[method as keyof typeof colors] || colors.reset;
 }
 
-const runtime = withRuntime<Env, typeof StateSchema>({
-	configuration: {
-		state: StateSchema,
-	},
-	tools,
-	prompts,
-	resources: [helloAppResource],
-});
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
 
 function withLogging(fetcher: Fetcher): Fetcher {
 	return async (req: Request, ...args) => {
@@ -95,16 +91,20 @@ function withMcpApiRoute(fetcher: Fetcher): Fetcher {
 	};
 }
 
-Bun.serve({
-	idleTimeout: 0,
-	hostname: "0.0.0.0",
-	port: PORT,
-	fetch: withLogging(withMcpApiRoute(runtime.fetch)),
+// ---------------------------------------------------------------------------
+// App factory
+// ---------------------------------------------------------------------------
+
+const runtime = withRuntime<Env, typeof StateSchema>({
+	configuration: {
+		state: StateSchema,
+	},
+	tools,
+	prompts,
+	resources: [helloAppResource],
 });
 
-const slug = process.env.WORKTREE_SLUG;
-const baseUrl = slug ? `http://${slug}.localhost` : `http://localhost:${PORT}`;
-
-console.log("");
-console.log(`${colors.mcp}MCP App${colors.reset}: ${baseUrl}/api/mcp`);
-console.log("");
+/** Platform-agnostic fetch handler. Use this in platform entrypoints. */
+export const app = {
+	fetch: withLogging(withMcpApiRoute(runtime.fetch)),
+};

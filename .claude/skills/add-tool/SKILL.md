@@ -32,7 +32,7 @@ Does the tool need a visual/interactive UI?
 | Tool definition | `api/tools/<name>.ts` | Zod schemas, execute logic, resource URI link |
 | Tool registry | `api/tools/index.ts` | Add tool to exports array |
 | Resource | `api/resources/<name>.ts` | Serve `dist/client/<name>.html` as MCP resource |
-| Resource registry | `api/main.ts` | Add resource to `withRuntime` resources array |
+| Resource registry | `api/app.ts` | Add resource to `withRuntime` resources array |
 | Web UI | `web/tools/<name>/index.tsx` | React component rendering tool states |
 | Build scripts | `package.json` | Add `TOOL=<name>` to `build:web` and `dev:web` |
 
@@ -146,7 +146,7 @@ export const myToolAppResource = (_env: Env) =>
 
 ## Step 4: Register Resource
 
-In `api/main.ts`, import and add to the resources array:
+In `api/app.ts`, import and add to the resources array:
 
 ```typescript
 import { myToolAppResource } from "./resources/my-tool.ts";
@@ -219,7 +219,7 @@ In `package.json`, add `TOOL=<name>` to both scripts:
 | Resource URI mismatch between tool and resource | Copy URI constant from tool file, don't redefine |
 | Missing `.ts`/`.tsx` in imports | Biome enforces `useImportExtensions: error` |
 | Wrong MIME type on resource | Must be `"text/html;profile=mcp-app"` exactly |
-| Forgetting to register resource in `api/main.ts` | Tool works but UI never loads |
+| Forgetting to register resource in `api/app.ts` | Tool works but UI never loads |
 | Not updating both `dev:web` and `build:web` | Dev works but production build misses the tool |
 | Using `@tool/` imports in API code | `@tool/` alias only works in web builds |
 | Not handling all 6 MCP statuses | UI breaks on cancel, error, or initial states |

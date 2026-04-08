@@ -23,9 +23,18 @@ This is an **MCP App template** — it builds interactive UIs for MCP (Model Con
 
 ### Two-Layer Structure
 
-**API Server (`api/`)** — Bun HTTP server using `@decocms/runtime`. Defines MCP tools and resources, exposes them at `/api/mcp` via SSE.
+**API Server (`api/`)** — Platform-agnostic MCP server using `@decocms/runtime`. Defines MCP tools and resources, exposes them at `/api/mcp` via SSE.
 
 **React UI (`web/`)** — React 19 app using `@modelcontextprotocol/ext-apps` SDK. Connects to the MCP host, receives tool input/results, and renders interactive UI.
+
+### Multi-Platform Deployment
+
+The API uses an **app factory** pattern for multi-platform deployment:
+
+- **`api/app.ts`** — Platform-agnostic core. All business logic, middleware, tools, and resources live here. Exports a `{ fetch }` handler.
+- **`api/main.bun.ts`** — Bun entrypoint (default, used for local dev). Calls `Bun.serve()` with the app's fetch handler.
+
+To add a new deployment target, create a new `api/main.<platform>.ts` entrypoint — see the `add-deploy-target` skill.
 
 ### Tool Build Pipeline
 
@@ -49,7 +58,7 @@ The UI renders based on `McpStatus`: `initializing` → `connected` → `tool-in
 
 ## Code Style
 
-- **Runtime**: Bun (not Node)
+- **Runtime**: Bun (not Node) for local development
 - **Formatter**: Biome with tab indentation, double quotes
 - **Imports**: Must include `.ts`/`.tsx` extensions (`useImportExtensions: error`)
 - **UI components**: shadcn/ui in `web/components/ui/` (do not lint these for a11y)
