@@ -8,9 +8,11 @@ import {
 } from "@tanstack/react-router";
 import { useMcpHostContext, useMcpState } from "./context.tsx";
 import HelloPage from "./tools/hello/index.tsx";
+import LeanCanvasPage from "./tools/lean-canvas/index.tsx";
 
 const TOOL_PAGES: Record<string, React.ComponentType> = {
 	hello_world: HelloPage,
+	lean_canvas: LeanCanvasPage,
 };
 
 function ToolRouter() {

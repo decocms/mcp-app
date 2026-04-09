@@ -1,6 +1,10 @@
 import { withRuntime } from "@decocms/runtime";
 import { prompts } from "./prompts/index.ts";
+import { canvasStateResource } from "./resources/canvas-state.ts";
 import { helloAppResource } from "./resources/hello.ts";
+import { leanCanvasAppResource } from "./resources/lean-canvas.ts";
+import { saveCanvasResource } from "./resources/save-canvas.ts";
+import { saveIdeaResource } from "./resources/save-idea.ts";
 import { tools } from "./tools/index.ts";
 import { type Env, StateSchema } from "./types/env.ts";
 
@@ -42,7 +46,13 @@ const runtime = withRuntime<Env, typeof StateSchema>({
 	},
 	tools,
 	prompts,
-	resources: [helloAppResource],
+	resources: [
+		helloAppResource,
+		leanCanvasAppResource,
+		canvasStateResource,
+		saveCanvasResource,
+		saveIdeaResource,
+	],
 });
 
 function withLogging(fetcher: Fetcher): Fetcher {

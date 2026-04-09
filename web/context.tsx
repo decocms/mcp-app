@@ -25,6 +25,7 @@ export function McpProvider({ children }: { children: ReactNode }) {
 
 	const onAppCreated = useCallback((app: App) => {
 		app.ontoolinput = (params) => {
+			console.log("[MCP] ontoolinput", params);
 			setState((prev) => ({
 				...prev,
 				status: "tool-input",
@@ -33,6 +34,7 @@ export function McpProvider({ children }: { children: ReactNode }) {
 		};
 
 		app.ontoolresult = (result) => {
+			console.log("[MCP] ontoolresult", result);
 			if (result.isError) {
 				const textBlock = result.content?.find((c) => c.type === "text");
 				const errorText =
