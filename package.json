@@ -17,7 +17,8 @@
 		"fmt": "biome format --write .",
 		"lint": "biome lint --write .",
 		"dev:worktree": "bun run scripts/dev-worktree.ts",
-		"dev:conductor": "WORKTREE_SLUG=$CONDUCTOR_WORKSPACE_NAME bun run dev:worktree"
+		"dev:conductor": "WORKTREE_SLUG=$CONDUCTOR_WORKSPACE_NAME bun run dev:worktree",
+		"start": "bunx decocms@latest link -p 3001 -- bun run dev"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.2.0",
