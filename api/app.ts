@@ -1,6 +1,8 @@
 import { withRuntime } from "@decocms/runtime";
 import { prompts } from "./prompts/index.ts";
+import { creativeResizeAppResource } from "./resources/creative-resize.ts";
 import { helloAppResource } from "./resources/hello.ts";
+import { withCreativeResizeRoute } from "./routes/creative-resize.ts";
 import { tools } from "./tools/index.ts";
 import { type Env, StateSchema } from "./types/env.ts";
 
@@ -101,10 +103,10 @@ const runtime = withRuntime<Env, typeof StateSchema>({
 	},
 	tools,
 	prompts,
-	resources: [helloAppResource],
+	resources: [helloAppResource, creativeResizeAppResource],
 });
 
 /** Platform-agnostic fetch handler. Use this in platform entrypoints. */
 export const app = {
-	fetch: withLogging(withMcpApiRoute(runtime.fetch)),
+	fetch: withLogging(withCreativeResizeRoute(withMcpApiRoute(runtime.fetch))),
 };
