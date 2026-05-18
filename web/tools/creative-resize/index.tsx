@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button.tsx";
-import { useMcpState } from "@/context.tsx";
+import { useMcpApp, useMcpState } from "@/context.tsx";
 import { useState } from "react";
-import type { CreativeResizeOutput } from "../../../api/tools/creative-resize.ts";
 import { AssetPreview } from "./AssetPreview.tsx";
 import { DropZone } from "./DropZone.tsx";
 import type { SelectedFormat } from "./FormatPicker.tsx";
@@ -10,7 +9,8 @@ import type { FormatResult } from "./ResultGrid.tsx";
 import { ResultGrid } from "./ResultGrid.tsx";
 
 export default function CreativeResizePage() {
-	const state = useMcpState<Record<string, never>, CreativeResizeOutput>();
+	const state = useMcpState();
+	const app = useMcpApp();
 	const [imageBase64, setImageBase64] = useState<string | null>(null);
 	const [fileName, setFileName] = useState<string>("");
 	const [selectedFormats, setSelectedFormats] = useState<SelectedFormat[]>([]);
@@ -29,7 +29,7 @@ export default function CreativeResizePage() {
 	}
 
 	async function generate() {
-		if (!imageBase64 || selectedFormats.length === 0) return;
+		if (!imageBase64 || selectedFormats.length === 0 || !app) return;
 		setGenerating(true);
 
 		const pending: FormatResult[] = selectedFormats.map((f) => ({
@@ -41,56 +41,33 @@ export default function CreativeResizePage() {
 		setResults(pending);
 
 		try {
-			const response = await fetch("/api/creative-resize/generate", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ image: imageBase64, formats: selectedFormats }),
+			const result = await app.callServerTool({
+				name: "creative_resize_generate",
+				arguments: { image: imageBase64, formats: selectedFormats },
 			});
 
-			if (!response.body) throw new Error("No response body");
+			if (result.isError) throw new Error("Generation failed");
 
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let buffer = "";
+			const { results: generatedResults } = result.structuredContent as {
+				results: Array<{
+					name: string;
+					status: "done" | "error";
+					b64Json?: string;
+					error?: string;
+				}>;
+			};
 
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				buffer += decoder.decode(value, { stream: true });
-				const lines = buffer.split("\n");
-				buffer = lines.pop() ?? "";
-
-				for (const line of lines) {
-					if (!line.startsWith("data: ")) continue;
-					try {
-						const event = JSON.parse(line.slice(6)) as {
-							name: string;
-							status: "done" | "error";
-							b64Json?: string;
-							error?: string;
-						};
-						setResults((prev) =>
-							prev.map((r) =>
-								r.name === event.name
-									? {
-											...r,
-											status: event.status,
-											b64Json: event.b64Json,
-											error: event.error,
-										}
-									: r,
-							),
-						);
-					} catch {
-						// malformed SSE line, skip
-					}
-				}
-			}
+			setResults((prev) =>
+				prev.map((r) => {
+					const found = generatedResults.find((g) => g.name === r.name);
+					return found ? { ...r, ...found } : r;
+				}),
+			);
 		} catch (e) {
 			setResults((prev) =>
 				prev.map((r) =>
 					r.status === "pending"
-						? { ...r, status: "error", error: String(e) }
+						? { ...r, status: "error" as const, error: String(e) }
 						: r,
 				),
 			);

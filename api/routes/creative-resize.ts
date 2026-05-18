@@ -23,7 +23,7 @@ export function buildPrompt(format: FormatRequest): string {
 	return `Recompose this creative asset for ${format.name} format (${format.width}×${format.height}px). ${format.promptHint}. Maintain brand colors, typography, and key visual elements. Output must look professional and polished.`;
 }
 
-async function generateFormat(
+export async function generateFormat(
 	imageBase64: string,
 	format: FormatRequest,
 	apiKey: string,
