@@ -7,10 +7,12 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import { useMcpHostContext, useMcpState } from "./context.tsx";
+import CreativeResizePage from "./tools/creative-resize/index.tsx";
 import HelloPage from "./tools/hello/index.tsx";
 
 const TOOL_PAGES: Record<string, React.ComponentType> = {
 	hello_world: HelloPage,
+	creative_resize: CreativeResizePage,
 };
 
 function ToolRouter() {
