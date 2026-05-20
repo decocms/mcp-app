@@ -32,14 +32,14 @@ export async function generateFormat(
 	const blob = new Blob([imageBytes], { type: "image/png" });
 
 	const formData = new FormData();
-	formData.append("model", "openai/gpt-image-1");
+	formData.append("model", "gpt-image-1");
 	formData.append("image", blob, "image.png");
 	formData.append("prompt", buildPrompt(format));
 	formData.append("size", mapToSupportedSize(format.width, format.height));
 	formData.append("response_format", "b64_json");
 	formData.append("n", "1");
 
-	const res = await fetch("https://openrouter.ai/api/v1/images/edits", {
+	const res = await fetch("https://api.openai.com/v1/images/edits", {
 		method: "POST",
 		headers: { Authorization: `Bearer ${apiKey}` },
 		body: formData,
@@ -47,7 +47,7 @@ export async function generateFormat(
 
 	if (!res.ok) {
 		const text = await res.text();
-		throw new Error(`OpenRouter error ${res.status}: ${text}`);
+		throw new Error(`OpenAI error ${res.status}: ${text}`);
 	}
 
 	const data = (await res.json()) as { data: Array<{ b64_json: string }> };
@@ -82,10 +82,10 @@ export function withCreativeResizeRoute(fetcher: Fetcher): Fetcher {
 			return fetcher(req, ...args);
 		}
 
-		const apiKey = process.env.OPENROUTER_API_KEY;
+		const apiKey = process.env.OPENAI_API_KEY;
 		if (!apiKey) {
 			return new Response(
-				JSON.stringify({ error: "OPENROUTER_API_KEY not configured" }),
+				JSON.stringify({ error: "OPENAI_API_KEY not configured" }),
 				{ status: 500, headers: { "Content-Type": "application/json" } },
 			);
 		}
