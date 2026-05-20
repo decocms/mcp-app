@@ -10,24 +10,34 @@ const formatSchema = z.object({
 	promptHint: z.string(),
 });
 
-const resultSchema = z.object({
-	name: z.string(),
-	status: z.enum(["done", "error"]),
-	b64Json: z.string().optional(),
-	error: z.string().optional(),
-});
+type JobStatus = "pending" | "done" | "error";
 
-export const creativeResizeGenerateTool = (_env: Env) =>
+interface Job {
+	status: JobStatus;
+	b64Json?: string;
+	error?: string;
+	startedAt: number;
+}
+
+const jobs = new Map<string, Job>();
+
+const TEN_MINUTES = 10 * 60 * 1000;
+setInterval(() => {
+	const now = Date.now();
+	for (const [id, job] of jobs) {
+		if (now - job.startedAt > TEN_MINUTES) jobs.delete(id);
+	}
+}, 60_000);
+
+export const creativeResizeStartTool = (_env: Env) =>
 	createTool({
-		id: "creative_resize_generate",
-		description: "Generate resized versions of a brand asset for multiple platform formats using AI.",
+		id: "creative_resize_start",
+		description: "Start generating one resized format. Returns a jobId immediately; poll creative_resize_status for the result.",
 		inputSchema: z.object({
 			image: z.string().describe("Base64-encoded PNG of the source asset"),
-			formats: z.array(formatSchema).describe("Target formats to generate"),
+			format: formatSchema,
 		}),
-		outputSchema: z.object({
-			results: z.array(resultSchema),
-		}),
+		outputSchema: z.object({ jobId: z.string() }),
 		annotations: {
 			readOnlyHint: false,
 			destructiveHint: false,
@@ -35,27 +45,53 @@ export const creativeResizeGenerateTool = (_env: Env) =>
 			openWorldHint: true,
 		},
 		execute: async ({ context }) => {
-			const { image, formats } = context;
 			const apiKey = process.env.OPENAI_API_KEY;
-			if (!apiKey) {
-				throw new Error("OPENAI_API_KEY is not configured");
+			if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
+
+			const jobId = crypto.randomUUID();
+			jobs.set(jobId, { status: "pending", startedAt: Date.now() });
+
+			generateFormat(context.image, context.format, apiKey)
+				.then((b64Json) => {
+					jobs.set(jobId, { status: "done", b64Json, startedAt: Date.now() });
+				})
+				.catch((e) => {
+					jobs.set(jobId, {
+						status: "error",
+						error: String(e),
+						startedAt: Date.now(),
+					});
+				});
+
+			return { jobId };
+		},
+	});
+
+export const creativeResizeStatusTool = (_env: Env) =>
+	createTool({
+		id: "creative_resize_status",
+		description: "Get the current status of a creative_resize_start job.",
+		inputSchema: z.object({ jobId: z.string() }),
+		outputSchema: z.object({
+			status: z.enum(["pending", "done", "error"]),
+			b64Json: z.string().optional(),
+			error: z.string().optional(),
+		}),
+		annotations: {
+			readOnlyHint: true,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
+		},
+		execute: async ({ context }) => {
+			const job = jobs.get(context.jobId);
+			if (!job) {
+				return { status: "error" as const, error: "Job not found" };
 			}
-
-			const results = await Promise.all(
-				formats.map(async (format) => {
-					try {
-						const b64Json = await generateFormat(image, format, apiKey);
-						return { name: format.name, status: "done" as const, b64Json };
-					} catch (e) {
-						return {
-							name: format.name,
-							status: "error" as const,
-							error: String(e),
-						};
-					}
-				}),
-			);
-
-			return { results };
+			return {
+				status: job.status,
+				b64Json: job.b64Json,
+				error: job.error,
+			};
 		},
 	});

@@ -51,38 +51,61 @@ export default function CreativeResizePage() {
 		setResults(pending);
 		centerOnResults();
 
-		for (const format of selectedFormats) {
-			try {
-				const res = await app.callServerTool(
-					{
-						name: "creative_resize_generate",
-						arguments: { image: imageBase64, formats: [format] },
-					},
-					{ timeout: 300_000 },
-				);
-				if (res.isError) throw new Error("Generation failed");
-				const { results: gen } = res.structuredContent as {
-					results: Array<{
-						name: string;
-						status: "done" | "error";
-						b64Json?: string;
-						error?: string;
-					}>;
-				};
-				const r = gen[0];
-				setResults((prev) =>
-					prev.map((p) => (p.name === format.name ? { ...p, ...r } : p)),
-				);
-			} catch (e) {
-				setResults((prev) =>
-					prev.map((p) =>
-						p.name === format.name
-							? { ...p, status: "error" as const, error: String(e) }
-							: p,
-					),
-				);
-			}
-		}
+		await Promise.all(
+			selectedFormats.map(async (format) => {
+				try {
+					const startRes = await app.callServerTool({
+						name: "creative_resize_start",
+						arguments: { image: imageBase64, format },
+					});
+					if (startRes.isError) throw new Error("Failed to start job");
+					const { jobId } = startRes.structuredContent as { jobId: string };
+
+					while (true) {
+						await new Promise((r) => setTimeout(r, 2000));
+						const statusRes = await app.callServerTool({
+							name: "creative_resize_status",
+							arguments: { jobId },
+						});
+						if (statusRes.isError) throw new Error("Failed to poll status");
+						const status = statusRes.structuredContent as {
+							status: "pending" | "done" | "error";
+							b64Json?: string;
+							error?: string;
+						};
+
+						if (status.status === "done") {
+							setResults((prev) =>
+								prev.map((p) =>
+									p.name === format.name
+										? { ...p, status: "done" as const, b64Json: status.b64Json }
+										: p,
+								),
+							);
+							return;
+						}
+						if (status.status === "error") {
+							setResults((prev) =>
+								prev.map((p) =>
+									p.name === format.name
+										? { ...p, status: "error" as const, error: status.error }
+										: p,
+								),
+							);
+							return;
+						}
+					}
+				} catch (e) {
+					setResults((prev) =>
+						prev.map((p) =>
+							p.name === format.name
+								? { ...p, status: "error" as const, error: String(e) }
+								: p,
+						),
+					);
+				}
+			}),
+		);
 
 		setGenerating(false);
 	}
