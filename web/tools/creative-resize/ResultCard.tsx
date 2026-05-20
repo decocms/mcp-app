@@ -33,7 +33,7 @@ export function ResultCard({ result, onClick }: ResultCardProps) {
 	if (result.status === "pending") {
 		return (
 			<div
-				className="pointer-events-auto rounded-xl bg-muted animate-pulse"
+				className="pointer-events-auto rounded-xl border border-border animate-pulse bg-[color-mix(in_oklab,var(--color-foreground)_8%,var(--color-background))]"
 				style={{ width, height }}
 			/>
 		);
