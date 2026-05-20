@@ -40,6 +40,7 @@ export async function generateFormat(
 			size: mapToAspectRatio(format.width, format.height),
 			n: 1,
 			response_format: "b64_json",
+			image: `data:image/png;base64,${imageBase64}`,
 		}),
 	});
 
