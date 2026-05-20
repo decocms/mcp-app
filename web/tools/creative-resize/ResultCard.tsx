@@ -72,7 +72,7 @@ export function ResultCard({ result, onClick }: ResultCardProps) {
 					{friendly.title}
 				</p>
 				{friendly.hint && (
-					<p className="text-[10px] text-destructive/70 text-center line-clamp-2 px-2">
+					<p className="text-[10px] text-destructive/70 text-center px-2 leading-snug">
 						{friendly.hint}
 					</p>
 				)}
