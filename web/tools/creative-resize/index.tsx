@@ -1,7 +1,7 @@
 import { useMcpApp, useMcpState } from "@/context.tsx";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AssetCard } from "./AssetCard.tsx";
-import { Canvas } from "./Canvas.tsx";
+import { Canvas, type CanvasHandle } from "./Canvas.tsx";
 import { DropZone } from "./DropZone.tsx";
 import { FormatDropdown, type SelectedFormat } from "./FormatDropdown.tsx";
 import { Lightbox } from "./Lightbox.tsx";
@@ -16,6 +16,8 @@ export default function CreativeResizePage() {
 	const [results, setResults] = useState<FormatResult[]>([]);
 	const [generating, setGenerating] = useState(false);
 	const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+	const canvasRef = useRef<CanvasHandle>(null);
+	const resultsRef = useRef<HTMLDivElement>(null);
 
 	if (state.status === "initializing") {
 		return (
@@ -23,6 +25,17 @@ export default function CreativeResizePage() {
 				<span className="w-5 h-5 border-2 border-muted border-t-foreground rounded-full animate-spin" />
 			</div>
 		);
+	}
+
+	function centerOnResults() {
+		requestAnimationFrame(() => {
+			const el = resultsRef.current;
+			if (!el || !canvasRef.current) return;
+			const rect = el.getBoundingClientRect();
+			const targetX = window.innerWidth / 2 - (rect.left + rect.width / 2);
+			const targetY = window.innerHeight / 2 - (rect.top + rect.height / 2);
+			canvasRef.current.panBy({ x: targetX, y: targetY });
+		});
 	}
 
 	async function generate() {
@@ -36,49 +49,49 @@ export default function CreativeResizePage() {
 			status: "pending",
 		}));
 		setResults(pending);
+		centerOnResults();
 
-		try {
-			const result = await app.callServerTool({
-				name: "creative_resize_generate",
-				arguments: { image: imageBase64, formats: selectedFormats },
-			});
+		await Promise.all(
+			selectedFormats.map(async (format) => {
+				try {
+					const res = await app.callServerTool({
+						name: "creative_resize_generate",
+						arguments: { image: imageBase64, formats: [format] },
+					});
+					if (res.isError) throw new Error("Generation failed");
+					const { results: gen } = res.structuredContent as {
+						results: Array<{
+							name: string;
+							status: "done" | "error";
+							b64Json?: string;
+							error?: string;
+						}>;
+					};
+					const r = gen[0];
+					setResults((prev) =>
+						prev.map((p) => (p.name === format.name ? { ...p, ...r } : p)),
+					);
+				} catch (e) {
+					setResults((prev) =>
+						prev.map((p) =>
+							p.name === format.name
+								? { ...p, status: "error" as const, error: String(e) }
+								: p,
+						),
+					);
+				}
+			}),
+		);
 
-			if (result.isError) throw new Error("Generation failed");
-
-			const { results: generatedResults } = result.structuredContent as {
-				results: Array<{
-					name: string;
-					status: "done" | "error";
-					b64Json?: string;
-					error?: string;
-				}>;
-			};
-
-			setResults((prev) =>
-				prev.map((r) => {
-					const found = generatedResults.find((g) => g.name === r.name);
-					return found ? { ...r, ...found } : r;
-				}),
-			);
-		} catch (e) {
-			setResults((prev) =>
-				prev.map((r) =>
-					r.status === "pending"
-						? { ...r, status: "error" as const, error: String(e) }
-						: r,
-				),
-			);
-		} finally {
-			setGenerating(false);
-		}
+		setGenerating(false);
 	}
 
 	const doneResults = results.filter((r) => r.status === "done" && r.b64Json);
 
 	return (
 		<>
-			<Canvas>
-				<div className="flex items-start gap-10">
+			<Canvas ref={canvasRef}>
+				<div className="flex items-center gap-10">
 					<div className="flex items-start gap-4">
 						{imageBase64 ? (
 							<AssetCard
@@ -89,6 +102,7 @@ export default function CreativeResizePage() {
 									setFileName("");
 									setResults([]);
 									setSelectedFormats([]);
+									canvasRef.current?.reset();
 								}}
 							/>
 						) : (
@@ -114,7 +128,7 @@ export default function CreativeResizePage() {
 					</div>
 
 					{results.length > 0 && (
-						<div className="flex flex-wrap gap-4 max-w-[680px] items-start">
+						<div ref={resultsRef} className="flex gap-4 items-center">
 							{results.map((result) => {
 								const doneIndex = doneResults.findIndex(
 									(d) => d.name === result.name,

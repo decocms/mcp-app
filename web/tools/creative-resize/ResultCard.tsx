@@ -17,7 +17,7 @@ interface ResultCardProps {
 	onClick: () => void;
 }
 
-const MAX_DIM = 200;
+const MAX_DIM = 320;
 
 function getCardSize(width: number, height: number) {
 	const ratio = width / height;
