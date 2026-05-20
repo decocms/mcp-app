@@ -36,6 +36,7 @@ export async function generateFormat(
 	formData.append("image", blob, "image.png");
 	formData.append("prompt", buildPrompt(format));
 	formData.append("size", mapToAspectRatio(format.width, format.height));
+	formData.append("quality", "medium");
 	formData.append("n", "1");
 
 	const res = await fetch("https://api.openai.com/v1/images/edits", {
