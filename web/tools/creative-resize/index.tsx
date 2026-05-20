@@ -54,10 +54,13 @@ export default function CreativeResizePage() {
 		await Promise.all(
 			selectedFormats.map(async (format) => {
 				try {
-					const res = await app.callServerTool({
-						name: "creative_resize_generate",
-						arguments: { image: imageBase64, formats: [format] },
-					});
+					const res = await app.callServerTool(
+						{
+							name: "creative_resize_generate",
+							arguments: { image: imageBase64, formats: [format] },
+						},
+						{ timeout: 300_000 },
+					);
 					if (res.isError) throw new Error("Generation failed");
 					const { results: gen } = res.structuredContent as {
 						results: Array<{
