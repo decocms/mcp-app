@@ -20,7 +20,7 @@ export function mapToAspectRatio(width: number, height: number): SupportedSize {
 }
 
 export function buildPrompt(format: FormatRequest): string {
-	return `Recompose this creative asset for ${format.name} format (${format.width}×${format.height}px). ${format.promptHint}. Maintain brand colors, typography, and key visual elements. Output must look professional and polished.`;
+	return `Adapt this image to ${format.name} (${format.width}×${format.height}px). ${format.promptHint}. Preserve the visual style, color palette, and composition. Professional polish.`;
 }
 
 export async function generateFormat(

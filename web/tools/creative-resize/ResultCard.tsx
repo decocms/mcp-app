@@ -19,6 +19,26 @@ interface ResultCardProps {
 
 const MAX_DIM = 320;
 
+function friendlyError(raw: string | undefined): { title: string; hint?: string } {
+	if (!raw) return { title: "Failed" };
+	if (raw.includes("safety system") || raw.includes("rejected")) {
+		return {
+			title: "Safety filter",
+			hint: "OpenAI blocked this image. Try one with less brand/logo content.",
+		};
+	}
+	if (raw.includes("rate limit") || raw.includes("429")) {
+		return { title: "Rate limited", hint: "Wait a few seconds and retry." };
+	}
+	if (raw.includes("billing") || raw.includes("quota")) {
+		return { title: "Billing limit", hint: "Add credits at platform.openai.com." };
+	}
+	if (raw.includes("timeout") || raw.includes("timed out")) {
+		return { title: "Timed out", hint: "The model took too long. Try again." };
+	}
+	return { title: "Failed", hint: raw.slice(0, 80) };
+}
+
 function getCardSize(width: number, height: number) {
 	const ratio = width / height;
 	if (ratio >= 1) {
@@ -40,16 +60,22 @@ export function ResultCard({ result, onClick }: ResultCardProps) {
 	}
 
 	if (result.status === "error") {
+		const friendly = friendlyError(result.error);
 		return (
 			<div
-				className="pointer-events-auto rounded-xl border border-destructive/40 bg-destructive/5 flex flex-col items-center justify-center gap-1 px-3"
+				className="pointer-events-auto group rounded-xl border border-destructive/40 bg-destructive/5 flex flex-col items-center justify-center gap-1.5 px-3 relative"
 				style={{ width, height }}
 				title={result.error}
 			>
 				<AlertCircle className="w-5 h-5 text-destructive/70" />
-				<p className="text-[10px] text-destructive/80 text-center line-clamp-2">
-					{result.error ?? "Failed"}
+				<p className="text-[11px] text-destructive/90 text-center font-medium">
+					{friendly.title}
 				</p>
+				{friendly.hint && (
+					<p className="text-[10px] text-destructive/70 text-center line-clamp-2 px-2">
+						{friendly.hint}
+					</p>
+				)}
 			</div>
 		);
 	}
