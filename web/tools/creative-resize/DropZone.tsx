@@ -90,6 +90,11 @@ export function DropZone({ onFile }: DropZoneProps) {
 	return (
 		<div
 			onClick={() => inputRef.current?.click()}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
+			}}
+			role="button"
+			tabIndex={0}
 			onDragOver={(e) => {
 				e.preventDefault();
 				setIsDragging(true);
@@ -97,10 +102,10 @@ export function DropZone({ onFile }: DropZoneProps) {
 			onDragLeave={() => setIsDragging(false)}
 			onDrop={onDrop}
 			className={cn(
-				"w-64 h-64 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed cursor-pointer select-none transition-colors",
+				"pointer-events-auto w-80 h-80 flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed cursor-pointer select-none transition-all bg-background/60 backdrop-blur-sm",
 				isDragging
-					? "border-primary bg-primary/5"
-					: "border-border hover:border-primary/50 hover:bg-muted/30",
+					? "border-foreground/60 bg-background scale-[1.02]"
+					: "border-border hover:border-foreground/40 hover:bg-background",
 			)}
 		>
 			<input
