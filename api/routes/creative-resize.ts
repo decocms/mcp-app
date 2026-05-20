@@ -10,13 +10,11 @@ interface GenerateBody {
 	formats: FormatRequest[];
 }
 
-type SupportedSize = "1024x1024" | "1536x1024" | "1024x1536";
-
-export function mapToSupportedSize(width: number, height: number): SupportedSize {
+export function mapToAspectRatio(width: number, height: number): string {
 	const ratio = width / height;
-	if (ratio > 1.2) return "1536x1024";
-	if (ratio < 0.8) return "1024x1536";
-	return "1024x1024";
+	if (ratio > 1.2) return "3:2";
+	if (ratio < 0.8) return "2:3";
+	return "1:1";
 }
 
 export function buildPrompt(format: FormatRequest): string {
@@ -28,30 +26,57 @@ export async function generateFormat(
 	format: FormatRequest,
 	apiKey: string,
 ): Promise<string> {
-	const imageBytes = Buffer.from(imageBase64, "base64");
-	const blob = new Blob([imageBytes], { type: "image/png" });
-
-	const formData = new FormData();
-	formData.append("model", "gpt-image-1");
-	formData.append("image", blob, "image.png");
-	formData.append("prompt", buildPrompt(format));
-	formData.append("size", mapToSupportedSize(format.width, format.height));
-	formData.append("response_format", "b64_json");
-	formData.append("n", "1");
-
-	const res = await fetch("https://api.openai.com/v1/images/edits", {
+	const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
 		method: "POST",
-		headers: { Authorization: `Bearer ${apiKey}` },
-		body: formData,
+		headers: {
+			Authorization: `Bearer ${apiKey}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			model: "openai/gpt-5.4-image-2",
+			messages: [
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: buildPrompt(format) },
+						{
+							type: "image_url",
+							image_url: { url: `data:image/png;base64,${imageBase64}` },
+						},
+					],
+				},
+			],
+			modalities: ["image"],
+			image_config: { aspect_ratio: mapToAspectRatio(format.width, format.height) },
+		}),
 	});
 
 	if (!res.ok) {
 		const text = await res.text();
-		throw new Error(`OpenAI error ${res.status}: ${text}`);
+		throw new Error(`OpenRouter error ${res.status}: ${text}`);
 	}
 
-	const data = (await res.json()) as { data: Array<{ b64_json: string }> };
-	return data.data[0].b64_json;
+	const data = (await res.json()) as {
+		choices: Array<{
+			message: {
+				images?: Array<{ image_url: { url: string } }>;
+				content?: string | Array<{ type: string; image_url?: { url: string } }>;
+			};
+		}>;
+	};
+
+	const msg = data.choices[0]?.message;
+
+	// Try images array first, then content array, then string content
+	const imageUrl =
+		msg?.images?.[0]?.image_url?.url ??
+		(Array.isArray(msg?.content)
+			? msg.content.find((c) => c.type === "image_url")?.image_url?.url
+			: msg?.content);
+
+	if (!imageUrl) throw new Error("No image returned from OpenRouter");
+
+	return imageUrl.startsWith("data:") ? imageUrl.split(",")[1] : imageUrl;
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: runtime middleware signature
@@ -82,10 +107,10 @@ export function withCreativeResizeRoute(fetcher: Fetcher): Fetcher {
 			return fetcher(req, ...args);
 		}
 
-		const apiKey = process.env.OPENAI_API_KEY;
+		const apiKey = process.env.OPENROUTER_API_KEY;
 		if (!apiKey) {
 			return new Response(
-				JSON.stringify({ error: "OPENAI_API_KEY not configured" }),
+				JSON.stringify({ error: "OPENROUTER_API_KEY not configured" }),
 				{ status: 500, headers: { "Content-Type": "application/json" } },
 			);
 		}
