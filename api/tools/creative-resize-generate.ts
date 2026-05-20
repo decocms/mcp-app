@@ -36,9 +36,9 @@ export const creativeResizeGenerateTool = (_env: Env) =>
 		},
 		execute: async ({ context }) => {
 			const { image, formats } = context;
-			const apiKey = process.env.OPENROUTER_API_KEY;
+			const apiKey = process.env.OPENAI_API_KEY;
 			if (!apiKey) {
-				throw new Error("OPENROUTER_API_KEY is not configured");
+				throw new Error("OPENAI_API_KEY is not configured");
 			}
 
 			const results = await Promise.all(
