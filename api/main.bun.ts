@@ -1,4 +1,11 @@
-import { app } from "./app.ts";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { createApp } from "./app.ts";
+
+const getClientHTML = () =>
+	readFile(join(import.meta.dir, "..", "dist", "client", "index.html"), "utf-8");
+
+const app = createApp(getClientHTML);
 
 const PORT = Number(process.env.PORT) || 3001;
 

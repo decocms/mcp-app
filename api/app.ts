@@ -1,7 +1,7 @@
 import { withRuntime } from "@decocms/runtime";
 import { prompts } from "./prompts/index.ts";
-import { creativeResizeAppResource } from "./resources/creative-resize.ts";
-import { helloAppResource } from "./resources/hello.ts";
+import { makeCreativeResizeAppResource } from "./resources/creative-resize.ts";
+import { makeHelloAppResource } from "./resources/hello.ts";
 import { withCreativeResizeRoute } from "./routes/creative-resize.ts";
 import { tools } from "./tools/index.ts";
 import { type Env, StateSchema } from "./types/env.ts";
@@ -97,16 +97,21 @@ function withMcpApiRoute(fetcher: Fetcher): Fetcher {
 // App factory
 // ---------------------------------------------------------------------------
 
-const runtime = withRuntime<Env, typeof StateSchema>({
-	configuration: {
-		state: StateSchema,
-	},
-	tools,
-	prompts,
-	resources: [helloAppResource, creativeResizeAppResource],
-});
+/** Platform-agnostic app factory. Pass getClientHTML to serve the built UI. */
+export function createApp(getClientHTML: () => Promise<string>) {
+	const runtime = withRuntime<Env, typeof StateSchema>({
+		configuration: {
+			state: StateSchema,
+		},
+		tools,
+		prompts,
+		resources: [
+			makeHelloAppResource(getClientHTML),
+			makeCreativeResizeAppResource(getClientHTML),
+		],
+	});
 
-/** Platform-agnostic fetch handler. Use this in platform entrypoints. */
-export const app = {
-	fetch: withLogging(withCreativeResizeRoute(withMcpApiRoute(runtime.fetch))),
-};
+	return {
+		fetch: withLogging(withCreativeResizeRoute(withMcpApiRoute(runtime.fetch))),
+	};
+}
