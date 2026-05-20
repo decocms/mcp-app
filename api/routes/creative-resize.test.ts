@@ -2,18 +2,18 @@ import { describe, expect, it } from "bun:test";
 import { buildPrompt, mapToAspectRatio } from "./creative-resize.ts";
 
 describe("mapToAspectRatio", () => {
-	it("maps square formats to 1:1", () => {
-		expect(mapToAspectRatio(1080, 1080)).toBe("1:1");
+	it("maps square formats to 1024x1024", () => {
+		expect(mapToAspectRatio(1080, 1080)).toBe("1024x1024");
 	});
 
-	it("maps landscape formats to 3:2", () => {
-		expect(mapToAspectRatio(1200, 628)).toBe("3:2");
-		expect(mapToAspectRatio(1600, 900)).toBe("3:2");
+	it("maps landscape formats to 1536x1024", () => {
+		expect(mapToAspectRatio(1200, 628)).toBe("1536x1024");
+		expect(mapToAspectRatio(1600, 900)).toBe("1536x1024");
 	});
 
-	it("maps portrait formats to 2:3", () => {
-		expect(mapToAspectRatio(1080, 1920)).toBe("2:3");
-		expect(mapToAspectRatio(1000, 1500)).toBe("2:3");
+	it("maps portrait formats to 1024x1536", () => {
+		expect(mapToAspectRatio(1080, 1920)).toBe("1024x1536");
+		expect(mapToAspectRatio(1000, 1500)).toBe("1024x1536");
 	});
 });
 

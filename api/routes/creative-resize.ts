@@ -10,11 +10,13 @@ interface GenerateBody {
 	formats: FormatRequest[];
 }
 
-export function mapToAspectRatio(width: number, height: number): string {
+type SupportedSize = "1024x1024" | "1536x1024" | "1024x1536";
+
+export function mapToAspectRatio(width: number, height: number): SupportedSize {
 	const ratio = width / height;
-	if (ratio > 1.2) return "3:2";
-	if (ratio < 0.8) return "2:3";
-	return "1:1";
+	if (ratio > 1.2) return "1536x1024";
+	if (ratio < 0.8) return "1024x1536";
+	return "1024x1024";
 }
 
 export function buildPrompt(format: FormatRequest): string {
@@ -26,28 +28,18 @@ export async function generateFormat(
 	format: FormatRequest,
 	apiKey: string,
 ): Promise<string> {
-	const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+	const res = await fetch("https://openrouter.ai/api/v1/images/generations", {
 		method: "POST",
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({
-			model: "openai/gpt-5.4-image-2",
-			messages: [
-				{
-					role: "user",
-					content: [
-						{ type: "text", text: buildPrompt(format) },
-						{
-							type: "image_url",
-							image_url: { url: `data:image/png;base64,${imageBase64}` },
-						},
-					],
-				},
-			],
-			modalities: ["image"],
-			image_config: { aspect_ratio: mapToAspectRatio(format.width, format.height) },
+			model: "openai/gpt-image-1",
+			prompt: buildPrompt(format),
+			size: mapToAspectRatio(format.width, format.height),
+			n: 1,
+			response_format: "b64_json",
 		}),
 	});
 
@@ -56,27 +48,8 @@ export async function generateFormat(
 		throw new Error(`OpenRouter error ${res.status}: ${text}`);
 	}
 
-	const data = (await res.json()) as {
-		choices: Array<{
-			message: {
-				images?: Array<{ image_url: { url: string } }>;
-				content?: string | Array<{ type: string; image_url?: { url: string } }>;
-			};
-		}>;
-	};
-
-	const msg = data.choices[0]?.message;
-
-	// Try images array first, then content array, then string content
-	const imageUrl =
-		msg?.images?.[0]?.image_url?.url ??
-		(Array.isArray(msg?.content)
-			? msg.content.find((c) => c.type === "image_url")?.image_url?.url
-			: msg?.content);
-
-	if (!imageUrl) throw new Error("No image returned from OpenRouter");
-
-	return imageUrl.startsWith("data:") ? imageUrl.split(",")[1] : imageUrl;
+	const data = (await res.json()) as { data: Array<{ b64_json: string }> };
+	return data.data[0].b64_json;
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: runtime middleware signature
