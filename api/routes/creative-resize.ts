@@ -32,7 +32,7 @@ export async function generateFormat(
 	const blob = new Blob([imageBytes], { type: "image/png" });
 
 	const formData = new FormData();
-	formData.append("model", "gpt-image-1");
+	formData.append("model", "gpt-image-2-2026-04-21");
 	formData.append("image", blob, "image.png");
 	formData.append("prompt", buildPrompt(format));
 	formData.append("size", mapToAspectRatio(format.width, format.height));
