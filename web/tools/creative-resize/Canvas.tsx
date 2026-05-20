@@ -37,7 +37,7 @@ export function Canvas({ children }: CanvasProps) {
 	}, [isPanning]);
 
 	return (
-		<div className="fixed inset-0 overflow-hidden bg-background select-none">
+		<div className="fixed inset-0 overflow-hidden select-none bg-[color-mix(in_oklab,var(--color-foreground)_3%,var(--color-background))]">
 			<div
 				ref={bgRef}
 				onMouseDown={onMouseDown}
