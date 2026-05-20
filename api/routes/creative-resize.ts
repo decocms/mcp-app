@@ -28,19 +28,27 @@ export async function generateFormat(
 	format: FormatRequest,
 	apiKey: string,
 ): Promise<string> {
-	const res = await fetch("https://openrouter.ai/api/v1/images/generations", {
+	const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
 		method: "POST",
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({
-			model: "openai/gpt-image-1",
-			prompt: buildPrompt(format),
-			size: mapToAspectRatio(format.width, format.height),
-			n: 1,
-			response_format: "b64_json",
-			image: `data:image/png;base64,${imageBase64}`,
+			model: "google/gemini-2.0-flash-exp:free",
+			messages: [
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: buildPrompt(format) },
+						{
+							type: "image_url",
+							image_url: { url: `data:image/png;base64,${imageBase64}` },
+						},
+					],
+				},
+			],
+			modalities: ["image", "text"],
 		}),
 	});
 
@@ -49,8 +57,24 @@ export async function generateFormat(
 		throw new Error(`OpenRouter error ${res.status}: ${text}`);
 	}
 
-	const data = (await res.json()) as { data: Array<{ b64_json: string }> };
-	return data.data[0].b64_json;
+	const data = (await res.json()) as {
+		choices: Array<{
+			message: {
+				content: string | Array<{ type: string; image_url?: { url: string } }>;
+			};
+		}>;
+	};
+
+	const content = data.choices[0]?.message?.content;
+	const parts = Array.isArray(content) ? content : [];
+	const imagePart = parts.find((p) => p.type === "image_url");
+
+	if (!imagePart?.image_url?.url) {
+		throw new Error("No image returned from OpenRouter");
+	}
+
+	const url = imagePart.image_url.url;
+	return url.startsWith("data:") ? url.split(",")[1] : url;
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: runtime middleware signature
