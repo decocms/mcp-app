@@ -1,8 +1,11 @@
-const proc = Bun.spawn(["deco", "link", "-p", "3001", "--", "bun", "run", "dev"], {
-	stdout: "pipe",
-	stderr: "pipe",
-	stdin: "inherit",
-});
+const proc = Bun.spawn(
+	["deco", "link", "-p", "3001", "--", "bun", "run", "dev"],
+	{
+		stdout: "pipe",
+		stderr: "pipe",
+		stdin: "inherit",
+	},
+);
 
 const decoder = new TextDecoder();
 
