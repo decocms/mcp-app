@@ -1,4 +1,4 @@
-import { createHashHistory } from "@tanstack/history";
+import { createMemoryHistory } from "@tanstack/history";
 import {
 	createRootRoute,
 	createRoute,
@@ -6,7 +6,8 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import { useMcpHostContext, useMcpState } from "./context.tsx";
+import { useEffect } from "react";
+import { useMcpApp, useMcpHostContext, useMcpState } from "./context.tsx";
 import HelloPage from "./tools/hello/index.tsx";
 
 const TOOL_PAGES: Record<string, React.ComponentType> = {
@@ -50,12 +51,38 @@ const indexRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([indexRoute]);
 
-const router = createRouter({
-	routeTree,
-	history: createHashHistory(),
-});
+const history = createMemoryHistory();
+const router = createRouter({ routeTree, history });
 
 export function AppRouter() {
+	const app = useMcpApp();
+	const { toolInput } = useMcpState<{ _route?: string }>();
+	const route = toolInput?._route;
+
+	useEffect(() => {
+		if (route) history.replace(route);
+	}, [route]);
+
+	useEffect(() => {
+		if (app?.getHostVersion()?.name !== "Studio") return;
+		return router.subscribe("onResolved", ({ fromLocation, toLocation }) => {
+			if (!fromLocation) return;
+			const args = encodeURIComponent(
+				JSON.stringify({ _route: toLocation.href }),
+			);
+			app.sendMessage({
+				role: "user",
+				content: [
+					{
+						type: "resource_link",
+						name: "navigate",
+						uri: `studio://navigate?args=${args}`,
+					},
+				],
+			});
+		});
+	}, [app]);
+
 	return <RouterProvider router={router} />;
 }
 
