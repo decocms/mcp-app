@@ -1,152 +1,67 @@
-# MCP App Template
+# Deploy de PDP · Sprint
 
-Official starter for building MCP Apps on deco — interactive UIs powered by the Model Context Protocol.
+MCP App para o deco Studio que leva a copy do [Gerador de PDP da Sprint](https://sprint-pdp.vercel.app) (validada pelo Estilo) para as Informações dos produtos na Wake e mostra o status do deploy de cada bloco, em cada cor: **gravado** (API Admin), **indexado** (Storefront) e **no site** (PDP renderizada).
 
-## Quick Start
+Feito a partir do [template de MCP App](https://github.com/decocms/mcp-app): mesma estrutura, mesmo build, mesmo CI.
+
+## Tools
+
+| Tool | UI | O que faz |
+|------|----|-----------|
+| `pdp_painel` | sim | Cruza o Gerador com a Wake e mostra o status de cada Referência. É o app que o Studio abre ao conectar. |
+| `pdp_detalhe` | sim | Blocos de uma Referência (Descrição, Composição, Especificações, Benefícios, Dados técnicos), o que falta e a matriz de deploy por cor. |
+| `pdp_publicar` | não | Grava na Wake os blocos prontos. Exige `confirmar: true`, Estilo validado, produto na Wake e Referência liberada. Não sobrescreve Composição do ERP divergente. Devolve `acoes`. |
+| `pdp_desfazer` | não | Recebe as `acoes` de um envio e apaga o que foi criado / volta o que foi atualizado. |
+
+Na UI, o painel abre o detalhe em `/produto/<ref>`; no Studio essa rota vira o argumento `_route` da view e sobrevive a um reload. O detalhe chama `pdp_publicar` e `pdp_desfazer` pelo botão (com confirmação) e manda o produto aberto como contexto para o agente.
+
+## Configuração (na conexão do Studio)
+
+Os valores ficam na conexão (**Settings → Connections**), guardados pelo Studio. O servidor não lê tokens de variáveis de ambiente: com ele exposto, quem chamasse sem conexão não pode usar os tokens de ninguém.
+
+| Campo | Para quê |
+|-------|----------|
+| Token Storefront da Wake | Leitura (obrigatório). |
+| Token da API Admin da Wake | Escrita. Sem ele, o app só lê. |
+| Referências liberadas para envio | Trava de teste: vazio bloqueia todo envio; `84.00021, 27.00019` libera só essas; `*` libera todas. |
+| catalogo.json do Gerador | Padrão `https://sprint-pdp.vercel.app/catalogo.json`. |
+| Site para conferir a PDP | Padrão `https://sprint.deco-cx.workers.dev`. |
+
+Toda mudança de Informação só aparece no site depois de **Indexar Agora** no painel da Wake (não há API para isso); o app avisa quando um bloco está gravado e não indexado.
+
+## Desenvolvimento
 
 ```bash
-# Clone the template
-git clone https://github.com/decocms/mcp-app.git my-mcp-app
-cd my-mcp-app
-
-# Install dependencies
 bun install
-
-# Start development
-bun run dev
+bun run dev          # API em http://localhost:3001/api/mcp + build da UI em watch
+bun start            # o mesmo, exposto por um túnel do deco link
 ```
 
-## Project Structure
-
-```
-├── api/                        # MCP server (platform-agnostic)
-│   ├── app.ts                  # App core — tools, resources, middleware
-│   ├── main.bun.ts             # Bun entrypoint (local dev)
-│   ├── tools/
-│   │   ├── index.ts            # Tool registry
-│   │   └── hello.ts            # Example tool (hello_world)
-│   ├── resources/
-│   │   └── hello.ts            # MCP App resource (serves HTML)
-│   └── types/
-│       └── env.ts              # StateSchema + Env type
-├── web/                        # React UI (MCP App)
-│   ├── tools/                  # One folder per tool UI (folder-based routing)
-│   │   └── hello/              # hello_world tool UI
-│   │       ├── main.tsx        # React entry point
-│   │       ├── bridge.ts       # MCP App SDK integration
-│   │       ├── context.tsx     # React context for MCP state
-│   │       ├── router.tsx      # TanStack Router with UI
-│   │       └── types.ts        # UI state types
-│   ├── entry.tsx               # Build entry (imports @tool/main.tsx)
-│   ├── components/ui/          # shadcn/ui components
-│   ├── lib/utils.ts            # cn() helper
-│   └── globals.css             # Tailwind base styles
-├── index.html                  # Single Vite entry (shared by all tools)
-├── package.json
-├── tsconfig.json
-├── biome.json
-├── vite.config.ts
-├── components.json             # shadcn/ui config
-├── app.json                    # Deco mesh config
-└── .mcp.json                   # Local MCP server config
-```
-
-## Development
+Para testar no Studio: **Settings → Connections → Add connection → Custom Connection**, tipo **HTTP**, com a URL do túnel terminando em `/api/mcp`. Preencha a configuração e anexe a conexão a um agente.
 
 ```bash
-# Run API server + web build concurrently
-bun run dev
-
-# API server only (port 3001)
-bun run dev:api
-
-# Web build only (watch mode)
-bun run dev:web
+bun run check        # TypeScript
+bun run ci:check     # Biome
+bun test             # contrato dos blocos e trava de envio
+bun run build        # dist/client/index.html + dist/server/main.js
 ```
 
-### Connecting to deco Studio
-
-To test your MCP App in deco Studio, expose your local server through a tunnel:
-
-```bash
-bun start
-# Tunnel started -> 🌐 Preview: https://<your-id>.deco.host
-```
-
-Then connect in Studio using the MCP URL:
+## Estrutura
 
 ```
-https://<your-id>.deco.host/api/mcp
+api/
+├── lib/
+│   ├── contrato.ts   # Gerador → blocos no formato que a PDP do site lê
+│   ├── gerador.ts    # catalogo.json do Gerador
+│   ├── wake.ts       # Storefront (leitura) e API Admin (escrita)
+│   ├── pdp.ts        # status do produto e do deploy por bloco e cor
+│   └── config.ts     # configuração da conexão
+├── tools/            # pdp-painel, pdp-detalhe, pdp-publicar, pdp-desfazer
+├── resources/pdp.ts  # UI das duas tools com UI (mesmo bundle)
+└── prompts/          # deploy_pdp_sprint
+web/
+├── hooks/use-tool.ts # resultado do host ou callServerTool, via TanStack Query
+├── tools/pdp-painel/
+├── tools/pdp-detalhe/
+└── router.tsx        # toolName → página; /painel e /produto/$ref
 ```
-
-### Adding a New Tool with UI
-
-Each tool UI lives in `web/tools/<name>/`. The `TOOL` env var tells Vite which folder to build — one build per tool, output as `dist/client/<name>.html`.
-
-1. **Create the tool** — `api/tools/my-tool.ts` using `createTool`
-2. **Register it** — add to the `tools` array in `api/tools/index.ts`
-3. **Create the UI** — `web/tools/my-tool/` with `main.tsx`, `bridge.ts`, `context.tsx`, `router.tsx`, `types.ts`
-4. **Create the resource** — `api/resources/my-tool.ts` serving `dist/client/my-tool.html`
-5. **Update build scripts**:
-   ```json
-   "build:web": "TOOL=hello vite build && TOOL=my-tool vite build",
-   "dev:web": "concurrently \"TOOL=hello vite build --watch\" \"TOOL=my-tool vite build --watch\""
-   ```
-
-### How the Tool Router Works
-
-```
-TOOL=hello vite build
-  → resolves @tool/* → web/tools/hello/*
-  → index.html imports web/entry.tsx imports @tool/main.tsx
-  → outputs dist/client/hello.html (single-file bundle)
-```
-
-## Tech Stack
-
-- **Runtime**: [Bun](https://bun.sh) (default), deployable to any Web Standard runtime
-- **Server**: [@decocms/runtime](https://github.com/decocms/runtime) MCP server
-- **UI**: React 19 + [TanStack Router](https://tanstack.com/router) (in memory; the route survives a reload in deco Studio via the `_route` arg) + [TanStack Query](https://tanstack.com/query)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com) v4 + [shadcn/ui](https://ui.shadcn.com)
-- **MCP Apps**: [@modelcontextprotocol/ext-apps](https://www.npmjs.com/package/@modelcontextprotocol/ext-apps) SDK
-- **Build**: [Vite](https://vitejs.dev) + [vite-plugin-singlefile](https://github.com/nickreese/vite-plugin-singlefile)
-- **Linting**: [Biome](https://biomejs.dev)
-
-## How It Works
-
-1. The **app core** (`api/app.ts`) defines tools, resources, and middleware as a platform-agnostic `fetch` handler
-2. A **platform entrypoint** (`api/main.bun.ts`) starts the server using the platform's API
-3. **Tools** perform actions and can link to a UI via `_meta.ui.resourceUri`
-4. **Resources** serve single-file HTML bundles with `mimeType: "text/html;profile=mcp-app"`
-5. The **MCP App UI** connects to the host via `@modelcontextprotocol/ext-apps`, receives tool input/results, and renders an interactive display
-6. Vite builds each tool UI into a self-contained HTML file (CSS + JS inlined) using the `TOOL` env var to select which `web/tools/<name>/` folder to bundle
-
-## Deployment
-
-### Multi-Platform
-
-The app uses a factory pattern that separates business logic (`api/app.ts`) from platform wiring. To deploy to a new platform, add a thin entrypoint file — see the [`add-deploy-target` skill](.claude/skills/add-deploy-target/SKILL.md) for step-by-step instructions.
-
-Supported targets out of the box:
-- **Bun** — `api/main.bun.ts` (default, used for local dev)
-
-Easy to add:
-- **Cloudflare Workers** — ~5 lines + `wrangler.toml`
-- **Deno** — ~5 lines
-- **Node.js** — ~5 lines + `@hono/node-server`
-- **AWS Lambda** — ~5 lines + `hono/aws-lambda`
-
-### Publish to deco
-
-1. Update `app.json` with your app's name, description, and connection URL
-2. Push to your repository — CI will validate the build
-3. Follow deco mesh publishing instructions to deploy
-
-## CI
-
-GitHub Actions runs on every push and pull request:
-
-- `bun run ci:check` — Biome lint + format check
-- `bun run check` — TypeScript type checking
-- `bun test` — Unit tests
-- `bun run build` — Production build

@@ -1,3 +1,3 @@
-import { helloPrompt } from "./hello.ts";
+import { deployPdpPrompt } from "./deploy-pdp.ts";
 
-export const prompts = [helloPrompt];
+export const prompts = [deployPdpPrompt];

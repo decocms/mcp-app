@@ -5,13 +5,27 @@ import {
 	createRouter,
 	Outlet,
 	RouterProvider,
+	useParams,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useMcpApp, useMcpHostContext, useMcpState } from "./context.tsx";
-import HelloPage from "./tools/hello/index.tsx";
+import PdpDetalhePage from "./tools/pdp-detalhe/index.tsx";
+import PdpPainelPage from "./tools/pdp-painel/index.tsx";
+
+// pdp_detalhe sem referência (o Studio abre cada UI como app, sem argumentos)
+// mostra o painel.
+function PdpDetalheDoHost() {
+	const { toolInput } = useMcpState<{ referencia?: string }>();
+	return toolInput?.referencia ? (
+		<PdpDetalhePage referencia={toolInput.referencia} />
+	) : (
+		<PdpPainelPage />
+	);
+}
 
 const TOOL_PAGES: Record<string, React.ComponentType> = {
-	hello_world: HelloPage,
+	pdp_painel: PdpPainelPage,
+	pdp_detalhe: PdpDetalheDoHost,
 };
 
 function ToolRouter() {
@@ -49,7 +63,28 @@ const indexRoute = createRoute({
 	component: ToolRouter,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute]);
+// Navegação dentro do app: no Studio a rota vira o arg `_route` da view e
+// sobrevive a um reload.
+const painelRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/painel",
+	component: PdpPainelPage,
+});
+
+const produtoRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/produto/$ref",
+	component: function ProdutoRoute() {
+		const { ref } = useParams({ from: "/produto/$ref" });
+		return <PdpDetalhePage key={ref} referencia={ref} />;
+	},
+});
+
+const routeTree = rootRoute.addChildren([
+	indexRoute,
+	painelRoute,
+	produtoRoute,
+]);
 
 const history = createMemoryHistory();
 const router = createRouter({ routeTree, history });

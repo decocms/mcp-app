@@ -1,23 +1,69 @@
 {
-	"scopeName": "deco",
-	"name": "mcp-app",
-	"friendlyName": "MCP App Template",
-	"description": "Starter template for building MCP Apps on deco with interactive UIs.",
+	"scopeName": "sprint",
+	"name": "pdp-deploy",
+	"friendlyName": "Deploy de PDP Sprint",
+	"description": "Leva a copy do Gerador de PDP da Sprint (validada pelo Estilo) para as Informações da Wake e mostra o status do deploy: gravado, indexado e no site.",
 	"icon": "",
 	"connection": {
 		"type": "HTTP",
 		"url": "https://your-app.decocache.com/api/mcp",
 		"configSchema": {
 			"type": "object",
-			"properties": {},
-			"required": []
+			"properties": {
+				"WAKE_TOKEN": {
+					"type": "string",
+					"title": "Token Storefront da Wake",
+					"description": "TCS-Access-Token da Storefront API: leitura dos produtos e das Informações.",
+					"format": "password"
+				},
+				"WAKE_ADMIN_TOKEN": {
+					"type": "string",
+					"title": "Token da API Admin da Wake",
+					"description": "Token Basic da API Admin: grava as Informações. Sem ele, o app só lê.",
+					"format": "password"
+				},
+				"REFS_LIBERADAS": {
+					"type": "string",
+					"title": "Referências liberadas para envio",
+					"description": "Separadas por vírgula (ex.: 84.00021, 27.00019). Vazio bloqueia todo envio; * libera todas."
+				},
+				"CATALOGO_URL": {
+					"type": "string",
+					"title": "catalogo.json do Gerador de PDP",
+					"description": "Padrão: https://sprint-pdp.vercel.app/catalogo.json"
+				},
+				"SITE_URL": {
+					"type": "string",
+					"title": "Site para conferir a PDP",
+					"description": "Padrão: https://sprint.deco-cx.workers.dev"
+				}
+			},
+			"required": ["WAKE_TOKEN"]
 		}
 	},
 	"unlisted": true,
 	"metadata": {
 		"categories": [],
 		"official": false,
-		"tags": ["template", "mcp-app"],
-		"short_description": "Starter template for MCP Apps on deco."
-	}
+		"tags": ["sprint", "wake", "pdp", "mcp-app"],
+		"short_description": "Gerador de PDP → Wake → site, com status do deploy."
+	},
+	"tools": [
+		{
+			"name": "pdp_painel",
+			"description": "Painel Gerador × Wake por Referência"
+		},
+		{
+			"name": "pdp_detalhe",
+			"description": "Blocos de uma Referência e status do deploy por cor"
+		},
+		{
+			"name": "pdp_publicar",
+			"description": "Grava na Wake os blocos prontos de uma Referência"
+		},
+		{
+			"name": "pdp_desfazer",
+			"description": "Desfaz um envio de pdp_publicar"
+		}
+	]
 }
