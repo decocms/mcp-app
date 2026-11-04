@@ -4,8 +4,8 @@ import { config } from "../lib/config.ts";
 import { catalogo } from "../lib/gerador.ts";
 import { analisar } from "../lib/pdp.ts";
 import { variantesPorRef } from "../lib/wake.ts";
-import type { Env } from "../types/env.ts";
 
+export const PDP_PAINEL_TOOL = "pdp_painel";
 export const PDP_PAINEL_RESOURCE_URI = "ui://mcp-app/pdp-painel";
 
 export const pdpPainelInputSchema = z.object({
@@ -62,20 +62,19 @@ export async function montarPainel(
 }
 export type PdpPainelOutput = Awaited<ReturnType<typeof montarPainel>>;
 
-export const pdpPainelTool = (_env: Env) =>
-	createTool({
-		id: "pdp_painel",
-		description:
-			"Painel do deploy de PDPs da Sprint: cruza o Gerador de PDP (copy validada pelo Estilo) com a Wake e mostra, por Referência, o status (fora da Wake, aguardando Estilo, pronto para enviar, publicado). Use para ver o que pode subir para a Wake.",
-		inputSchema: pdpPainelInputSchema,
-		_meta: { ui: { resourceUri: PDP_PAINEL_RESOURCE_URI } },
-		annotations: {
-			title: "Deploy de PDP",
-			readOnlyHint: true,
-			destructiveHint: false,
-			idempotentHint: true,
-			openWorldHint: true,
-		},
-		execute: ({ context, runtimeContext }) =>
-			montarPainel(config(runtimeContext), context),
-	});
+export const pdpPainelTool = createTool({
+	id: PDP_PAINEL_TOOL,
+	description:
+		"Painel do deploy de PDPs da Sprint: cruza o Gerador de PDP (copy validada pelo Estilo) com a Wake e mostra, por Referência, o status (fora da Wake, aguardando Estilo, pronto para enviar, publicado). Use para ver o que pode subir para a Wake.",
+	inputSchema: pdpPainelInputSchema,
+	_meta: { ui: { resourceUri: PDP_PAINEL_RESOURCE_URI } },
+	annotations: {
+		title: "Deploy de PDP",
+		readOnlyHint: true,
+		destructiveHint: false,
+		idempotentHint: true,
+		openWorldHint: true,
+	},
+	execute: ({ context, runtimeContext }) =>
+		montarPainel(config(runtimeContext), context),
+});

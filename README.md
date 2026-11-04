@@ -10,10 +10,16 @@ Feito a partir do [template de MCP App](https://github.com/decocms/mcp-app): mes
 |------|----|-----------|
 | `pdp_painel` | sim | Cruza o Gerador com a Wake e mostra o status de cada Referência. É o app que o Studio abre ao conectar. |
 | `pdp_detalhe` | sim | Blocos de uma Referência (Descrição, Composição, Especificações, Benefícios, Dados técnicos), o que falta e a matriz de deploy por cor. |
-| `pdp_publicar` | não | Grava na Wake os blocos prontos. Exige `confirmar: true`, Estilo validado, produto na Wake e Referência liberada. Não sobrescreve Composição do ERP divergente. Devolve `acoes`. |
+| `pdp_publicar` | não | Grava na Wake os blocos prontos. Exige `confirmar: true`, Estilo validado, produto na Wake e Referência liberada. Não sobrescreve Composição do ERP divergente. Devolve `acoes`. Com `simular: true`, só devolve o `plano` (o que seria criado/atualizado em cada cor) e os `avisos` do que impediria o envio. |
 | `pdp_desfazer` | não | Recebe as `acoes` de um envio e apaga o que foi criado / volta o que foi atualizado. |
 
 Na UI, o painel abre o detalhe em `/produto/<ref>`; no Studio essa rota vira o argumento `_route` da view e sobrevive a um reload. O detalhe chama `pdp_publicar` e `pdp_desfazer` pelo botão (com confirmação) e manda o produto aberto como contexto para o agente.
+
+## Instalação no Studio
+
+Na primeira vez que a conexão é configurada (`onInstall`, `api/install.ts`), o app usa a API do próprio Studio para criar o agente **Gerador de PDP**: ele aparece com ícone na tela inicial, já com as tools desta conexão e instruções de uso. O painel fica fixado como item do menu lateral e como tela principal do agente, com o chat aberto ao lado. Os escopos pedidos (`SELF::COLLECTION_VIRTUAL_MCP_*`, `SELF::AUTOMATION_*`, `SELF::VIRTUAL_MCP_PINNED_VIEWS_UPDATE`) aparecem na instalação.
+
+Reinstalar não duplica: um agente com o mesmo nome é reaproveitado.
 
 ## Configuração (na conexão do Studio)
 

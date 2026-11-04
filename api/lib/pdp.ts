@@ -30,7 +30,7 @@ export type StatusProduto =
 
 export type Etapa = "ok" | "diferente" | "ausente" | "nao_verificado" | "erro";
 
-const infoIndexada = (v: VarianteWake, b: Bloco) =>
+export const infoIndexada = (v: VarianteWake, b: Bloco) =>
 	v.informations?.find(
 		(i) =>
 			semAcento(i.title) === semAcento(b.titulo) ||

@@ -3,7 +3,6 @@ import { z } from "zod";
 import { config } from "../lib/config.ts";
 import { INDEXAR } from "../lib/pdp.ts";
 import { desfazer } from "../lib/wake.ts";
-import type { Env } from "../types/env.ts";
 
 const acaoSchema = z.object({
 	sku: z.string(),
@@ -30,34 +29,33 @@ export const pdpDesfazerInputSchema = z.object({
 });
 export type PdpDesfazerInput = z.infer<typeof pdpDesfazerInputSchema>;
 
-export const pdpDesfazerTool = (_env: Env) =>
-	createTool({
-		id: "pdp_desfazer",
-		description:
-			"Desfaz um envio feito por pdp_publicar: apaga as Informações criadas e volta as atualizadas ao texto anterior.",
-		inputSchema: pdpDesfazerInputSchema,
-		annotations: {
-			title: "Desfazer envio de PDP",
-			readOnlyHint: false,
-			destructiveHint: true,
-			idempotentHint: false,
-			openWorldHint: true,
-		},
-		execute: async ({ context, runtimeContext }) => {
-			const cfg = config(runtimeContext);
-			const feitas: string[] = [];
-			const erros: string[] = [];
-			for (const a of context.acoes.toReversed()) {
-				if (a.acao === "igual") continue;
-				try {
-					await desfazer(cfg, a);
-					feitas.push(
-						`${a.sku} · ${a.titulo}: ${a.acao === "criado" ? "apagado" : "restaurado"}`,
-					);
-				} catch (err) {
-					erros.push(`${a.sku} · ${a.titulo}: ${(err as Error).message}`);
-				}
+export const pdpDesfazerTool = createTool({
+	id: "pdp_desfazer",
+	description:
+		"Desfaz um envio feito por pdp_publicar: apaga as Informações criadas e volta as atualizadas ao texto anterior.",
+	inputSchema: pdpDesfazerInputSchema,
+	annotations: {
+		title: "Desfazer envio de PDP",
+		readOnlyHint: false,
+		destructiveHint: true,
+		idempotentHint: false,
+		openWorldHint: true,
+	},
+	execute: async ({ context, runtimeContext }) => {
+		const cfg = config(runtimeContext);
+		const feitas: string[] = [];
+		const erros: string[] = [];
+		for (const a of context.acoes.toReversed()) {
+			if (a.acao === "igual") continue;
+			try {
+				await desfazer(cfg, a);
+				feitas.push(
+					`${a.sku} · ${a.titulo}: ${a.acao === "criado" ? "apagado" : "restaurado"}`,
+				);
+			} catch (err) {
+				erros.push(`${a.sku} · ${a.titulo}: ${(err as Error).message}`);
 			}
-			return { feitas, erros, indexar: INDEXAR };
-		},
-	});
+		}
+		return { feitas, erros, indexar: INDEXAR };
+	},
+});

@@ -1,4 +1,5 @@
 import { withRuntime } from "@decocms/runtime";
+import { INSTALL_SCOPES, onInstall } from "./install.ts";
 import { prompts } from "./prompts/index.ts";
 import {
 	pdpDetalheAppResource,
@@ -101,6 +102,8 @@ function withMcpApiRoute(fetcher: Fetcher): Fetcher {
 const runtime = withRuntime<Env, typeof StateSchema>({
 	configuration: {
 		state: StateSchema,
+		scopes: INSTALL_SCOPES,
+		onInstall,
 	},
 	tools,
 	prompts,
