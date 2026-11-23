@@ -1,0 +1,99 @@
+---
+name: screens-and-tools
+description: How to add or change a screen (a tool's page), a route inside it (a tab, a drill-down) in this MCP App, how a screen reads and writes data (useMcpState, app.callServerTool, react-query) and keeps its place across a Studio reload (the `_route` round-trip in web/router.tsx) — plus what a tool needs so a screen can call it. Load before touching web/router.tsx, web/context.tsx, web/tools/ or adding a screen.
+paths:
+  - "web/router.tsx"
+  - "web/context.tsx"
+  - "web/tools/**"
+---
+
+# Tools and screens
+
+How it works: **one HTML bundle** (`dist/client/index.html`, every tool's UI
+inlined) served as the MCP App resource. The host calls a tool whose
+`_meta.ui.resourceUri` points at it; the bundle connects, reads the tool's
+name from the host context, and renders that tool's page.
+
+```
+Host → tool (_meta.ui.resourceUri) → bundle → web/app.tsx (McpProvider)
+  → AppRouter (web/router.tsx, TanStack Router on a memory history)
+  → ToolRouter → TOOL_PAGES[toolName] → web/tools/<name>/index.tsx
+  → the page reads useMcpState() and calls more tools (app.callServerTool)
+```
+
+Code: `web/context.tsx` (`McpProvider`, `useMcpState`, `useMcpApp`,
+`useMcpHostContext`, `useTheme`), `web/types.ts` (`McpStatus`),
+`web/router.tsx` (`TOOL_PAGES`, routes, the Studio reload round-trip).
+
+## 1. A tool a screen calls
+
+The server side is the `add-tool` skill (`api/tools/<name>.ts`, registered in
+`api/tools/index.ts`; a resource in `api/resources/` only for a tool that
+opens a UI). For a screen:
+
+- Zod v4 input **and** output schema; snake_case id, verb first
+  (`list_items`, `get_item`); `annotations` with `readOnlyHint`. Export the
+  inferred types — the UI imports them (`../../../api/tools/<name>.ts`).
+- Who is calling comes from the request (the runtime's auth/state), never
+  from an argument the client sets.
+- Writes have `readOnlyHint: false` and return what the screen needs to
+  re-render.
+- **Fail small.** A tool fails only when its *primary* data fails.
+  Enrichment (names, photos, a count from another source) is best effort:
+  catch it, log the reason, and return the rows with those fields `null`.
+- A tool only the UI calls (not the model) still needs a clear description —
+  the model sees every tool.
+
+## 2. A screen for a tool
+
+1. A page component, default export, in `web/tools/<name>/index.tsx`,
+   handling every status (`web/tools/hello` is the reference):
+   ```tsx
+   export default function ItemsPage() {
+   	const state = useMcpState<ListItemsInput, ListItemsOutput>();
+   	if (state.status === "error") return <ErrorBlock message={state.error} />;
+   	if (state.status !== "tool-result") return <ItemsSkeleton />;
+   	…
+   }
+   ```
+   Structure first: once the tool is known, draw the real frame and
+   skeleton rows, not a centered spinner (`ui-components`).
+2. Register it in `TOOL_PAGES` in `web/router.tsx` (key = the tool's `id`).
+3. Check it in Studio: `bun run dev` + `bun start`, connect the tunnel URL,
+   call the tool.
+
+Data inside a screen:
+
+| Need | Use |
+|---|---|
+| The input/result of the tool that opened it | `useMcpState<Input, Output>()` |
+| Read extra data (a panel, a block) | `useMcpApp()?.callServerTool({ name, arguments })` — wrap it in **one** shared hook in `web/lib/` (react-query's `useQuery` is installed; mount its `QueryClientProvider` in `web/app.tsx` the first time) — not a `useEffect` + `useState` per screen |
+| Write, then refresh what's on screen | the same call for the write, then invalidate/re-read in place. In a control: skill `saving` |
+| Another screen of the same tool (tab, drill-down) | a child route in `web/router.tsx` + `<Link>` / `useNavigate()` |
+| View state that survives a reload (filters, tab, selection, an open panel) | the route: a path segment or a search param (`validateSearch` with Zod) — never `useState` |
+| The host (open a link, theme, safe area, display mode) | `useMcpApp()` (`openLink`, `sendMessage`, `updateModelContext`), `useMcpHostContext()`, `useTheme()` |
+
+**A Studio reload lands where you were.** Every navigation after the first
+is reported to Studio as `studio://navigate?args={"_route":"<href>"}`; on
+reload Studio calls the tool again with `_route` in its input and
+`AppRouter` replays it (`history.replace`). So whatever must survive goes in
+the route — path and search params — and nothing else. Don't build a second
+mechanism. Outside Studio (other hosts) the route still works, it just
+starts at `/`.
+
+## 3. A new tool with its own UI
+
+Server: the tool with `_meta: { ui: { resourceUri } }` and its resource
+(`add-tool`). Client: its page in `TOOL_PAGES`. The bundle is shared, so
+there is nothing to add to the build.
+
+## 4. Done
+
+- [ ] Tool has input/output schemas, description, annotations; its types are
+      exported and imported by the UI, no `any`.
+- [ ] Page registered in `TOOL_PAGES` (key = tool id); every `McpStatus`
+      handled, plus the states of its own reads (`ui-components`).
+- [ ] View state in the route; a reload in Studio lands on the same screen
+      with the same tab/filter.
+- [ ] Reads go through the shared hook, not ad-hoc effects.
+- [ ] `qa` before the PR.
