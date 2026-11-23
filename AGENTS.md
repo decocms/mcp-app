@@ -64,3 +64,25 @@ The UI renders based on `McpStatus`: `initializing` → `connected` → `tool-in
 - **UI components**: shadcn/ui in `web/components/ui/` (do not lint these for a11y)
 - **Styling**: Tailwind CSS v4, use `cn()` from `@/lib/utils.ts` for conditional classes
 - **Validation**: Zod v4 for all schemas (tool input/output, state)
+
+## Skills and hooks
+
+Skills in `.claude/skills/` say how each part of the app is built. UI and
+design: `ui-components` (the UI kit in `web/components/ui`, recipes; its
+`references/visual-identity.md` is the master rule), `studio-ui` (decocms
+design system: hierarchy, tokens, what to cut), `screens-and-tools` (pages,
+routes, reading/writing data, surviving a Studio reload), `saving`, `motion`,
+`qa` (before a PR). Server and ops: `add-tool`, `add-deploy-target`,
+`publish-store`, `migrate-template`.
+
+Hooks (`.claude/hooks`, rules in `rules.ts`) enforce it: editing `web/**` is
+refused until `ui-components` and `studio-ui` were loaded this session;
+`web/router.tsx`, `web/context.tsx` and `web/tools/**` also need
+`screens-and-tools`; `api/tools/**` and `api/resources/**` need `add-tool`.
+Load them with the Skill tool (or read their SKILL.md) and retry; subagents
+count what the main thread loaded before briefing them. Each request gets the
+skills its words call for. `gh pr merge` is refused until the PR's checks
+are green (skipped checks, or none at all, don't block). `.dev.vars`/`.env*`
+can't be read, `--no-verify` and `git push --force` can't run. A hook that
+breaks lets the call through. Test them with `bun test ./.claude/hooks`
+(CI runs it).
