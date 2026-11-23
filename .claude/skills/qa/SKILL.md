@@ -24,7 +24,7 @@ list. Fix what you find; what you leave, say why in the PR.
    for each read inside the screen (`ui-components`). Long lists page.
 4. **Saving**: optimistic value, pending button, one request per click
    (`saving`); a failure says so and puts the screen back.
-5. **Reload**: in Studio (`bun run dev` + `bun start`, connect the tunnel
+5. **Reload**: in Studio (`bun start`, connect the tunnel's MCP
    URL), go to the screen (tab, filter, drill-down), reload → the same
    screen, same tab and filter. View state lives in the route.
 6. **Edge inputs**: empty strings, accents, very long names, many items,
@@ -33,8 +33,7 @@ list. Fix what you find; what you leave, say why in the PR.
    ```bash
    bun run ci:check   # biome lint + format
    bun run check      # tsc --noEmit
-   bun test           # the app's tests, if any
-   bun test ./.claude/hooks   # the agent hooks (bun skips dot-dirs by default)
+   bun test . ./.claude/hooks   # the app's tests + the agent hooks (bun skips dot-dirs unless named)
    bun run build      # web bundle + server
    ```
 

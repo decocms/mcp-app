@@ -13,8 +13,9 @@ answers makes people click again, and every click is a new request.
 
 ## The pieces
 
-A write from a screen is a tool call (`useMcpApp()?.callServerTool`, or a
-react-query `useMutation` around it — `screens-and-tools`). The template
+A write from a screen is a tool call (`useCallTool()` from
+`web/lib/tools.ts`, or a react-query `useMutation` around it —
+`screens-and-tools`). The template
 ships none of the pieces below yet. Build each one **once, the first time a
 change needs it**, in the UI kit — never per screen:
 
@@ -34,8 +35,10 @@ change needs it**, in the UI kit — never per screen:
 | Text that saves when you leave the field (a name) | `CommitInput` with `onCommit` **returning the save's promise** | Saves on blur/Enter, never per key. Read-only while saving; on failure the saved text comes back, with a toast |
 | A list a write reorders (a row removed, an item moved out of a filter) | local optimistic state + rollback | The row moves at once; the re-read keeps the screen (`ui-components` §5) |
 
-Wrap the write: `useSubmit((v) => call("archive_item", { id, … }))`,
+Wrap the write (`const call = useCallTool()`, `web/lib/tools.ts`; it throws
+the tool's error): `useSubmit((v) => call("archive_item", { id, … }))`,
 `useSavedValue(row.enabled, (v) => call("set_enabled", { id, enabled: v }))`.
+Toasts are `toast.error(…)` from `sonner` (the `Toaster` is mounted).
 
 ## Optimistic or pending?
 

@@ -48,14 +48,16 @@ Run this against a screenshot, not just the diff. Every item is a yes/no; a
 - [ ] Primary action is visible without scrolling.
 - [ ] One obvious next step — the action set changes with state rather than
       listing everything at once.
-- [ ] Every icon-only control is an `IconButton` with a `label`.
+- [ ] Every icon-only control has an accessible name (`IconButton` with a
+      `label`; in this template `Button size="icon"` + `aria-label` + `Tooltip`).
 - [ ] Anything clickable looks clickable; nothing clickable looks like metadata.
 
 ## System
 
 - [ ] No hand-rolled version of a component the DS ships
       (see [components.md](components.md)).
-- [ ] Loading uses the component's `.Skeleton` so layout doesn't jump.
+- [ ] Loading keeps the layout (the component's `.Skeleton`; here `Skeleton`
+      rows in place) so nothing jumps when data lands.
 - [ ] Correct in light *and* dark.
 - [ ] Nothing clipped at the narrowest supported width (chips, rings, badges).
 

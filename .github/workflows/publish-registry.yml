@@ -1,13 +1,9 @@
 name: Publish to Registry
 
+# Manual only: Studio's publish-request endpoint answers 404 since it removed
+# publish requests (see .claude/skills/publish-store). Restore a push trigger
+# once there is an endpoint again.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'deco.json'
-      - 'app.json'
-      - 'README.md'
-      - '.github/workflows/publish-registry.yml'
   workflow_dispatch:
     inputs:
       dry_run:

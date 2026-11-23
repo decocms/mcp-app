@@ -5,6 +5,24 @@ map: which component does which job, the decocms-only pieces shadcn doesn't
 have, how a page is composed from them, and the traps — each one produced a
 visibly broken screen before it was written down. Checked against v1.21.
 
+## In this template
+
+The names below are `@decocms/ui`'s. This template's kit is shadcn/ui in
+`web/components/ui`; reach for the equivalent, and build a missing piece once
+in `web/components/` the first time a screen needs it (`ui-components` §1).
+
+| DS | Here |
+|---|---|
+| `Button` variants | `default` · `secondary` · `outline` · `ghost` · `destructive` · `link` (no `tab`, `menu`, `brand`, `success`, `warning`) |
+| `IconButton` | `Button size="icon"` + `aria-label`, inside a `Tooltip` |
+| `Badge` variants | `default` · `secondary` · `outline` · `destructive` · `ghost` · `link`; a status is `outline` + `text-success` / `text-warning` |
+| `EmptyState` | `Empty` (`empty.tsx`) |
+| `Spinner`, `Skeleton`, `Collapsible`, `Accordion`, `Popover`, `Sheet`, `Dialog`, `AlertDialog`, `Table`, `Avatar`, `Sonner` | same names in `web/components/ui` |
+| `CollectionSearch` / `SearchInput` | `InputGroup` with a search icon |
+| `FilterBar`, `useSortable`, `ViewModeToggle`, `SplitButton`, `StepIndicator`, `useCopy`, `EntityCard` / `EntityGrid`, `AppTopbar` | not in the kit — build once in `web/components/` when a screen needs it |
+| `Markdown` | not in the kit — add one shared renderer before rendering user/AI text |
+| `Card` | shadcn's `Card` *has* padding (`py-6`, `px-6` on its parts); the "no padding" trap below is the DS's. For a plain sheet, `surface p-5` |
+
 ## By job
 
 | Job | Use | Not |

@@ -17,16 +17,20 @@ paths:
 ---
 
 > **In this template**: components are shadcn/ui in `web/components/ui`,
-> styled by the host's tokens in `web/globals.css` — not `@decocms/ui`. The
-> DS vocabulary below (`surface`, `surface-inset`, `text-meta`,
-> `font-display`, `tnum`, `focus-ring`, `card-ring-*`) is **not** in
-> `web/globals.css` yet: the first screen that needs one adds it there as an
-> `@utility` (values in [references/design-system.md](references/design-system.md)),
-> or the app adopts `@decocms/ui` wholesale via the Setup section. Never
-> hand-roll the same look per screen. A DS component the kit lacks is a
-> judgment the `ui-components` skill makes (§1): reuse, extend, or add it to
-> `web/components`. Where this skill and `ui-components` disagree,
-> `ui-components` wins.
+> styled by the host's tokens in `web/globals.css` — not `@decocms/ui`.
+> `web/globals.css` already has the DS vocabulary: `surface`,
+> `surface-interactive`, `surface-inset`, `card-ring-destructive` /
+> `card-ring-warning`, `text-meta`, `text-2xs`, `font-display`, `tnum`,
+> `focus-ring`, the `success` / `warning` colours and the `ease-out-cubic`
+> easing. Not there: `brand` / `special` colours, `focus-ring-inverted`,
+> the scrollbar and fade utilities — the first screen that needs one adds it
+> as an `@utility` (values in [references/design-system.md](references/design-system.md)).
+> The type scale is Tailwind's (`text-sm` is 14px here, not the DS's 13px);
+> icons are `lucide-react`, not `@untitledui/icons`. The component names in
+> [references/components.md](references/components.md) are the DS's; its
+> first table maps them to this kit. Adopting `@decocms/ui` wholesale is the
+> Setup section. Never hand-roll the same look per screen. Where this skill
+> and `ui-components` disagree, `ui-components` wins.
 
 # Screens with the decocms design system
 
@@ -154,7 +158,7 @@ bun add @decocms/ui react react-dom
 
 ```css
 @import "@decocms/ui/styles/global.css";
-@source "../src"; /* the stylesheet only scans the DS's own components */
+@source "./"; /* from web/globals.css: the stylesheet only scans the DS's own components */
 ```
 
 ```tsx

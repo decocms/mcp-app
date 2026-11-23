@@ -23,4 +23,4 @@ jobs:
       - run: bun run ci:check
       - run: bun run check
       - run: bun run build
-      - run: bun test ./.claude/hooks
+      - run: bun test . ./.claude/hooks

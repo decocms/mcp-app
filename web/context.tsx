@@ -11,6 +11,7 @@ import {
 	useContext,
 	useState,
 } from "react";
+import { toolError } from "./lib/tools.ts";
 import { INITIAL_STATE, type McpState } from "./types.ts";
 
 const McpStateContext = createContext<McpState>(INITIAL_STATE);
@@ -34,11 +35,8 @@ export function McpProvider({ children }: { children: ReactNode }) {
 
 		app.ontoolresult = (result) => {
 			if (result.isError) {
-				const textBlock = result.content?.find((c) => c.type === "text");
-				const errorText =
-					(textBlock?.type === "text" ? textBlock.text : undefined) ??
-					"Tool returned an error";
-				setState((prev) => ({ ...prev, status: "error", error: errorText }));
+				const error = toolError(result);
+				setState((prev) => ({ ...prev, status: "error", error }));
 				return;
 			}
 			setState((prev) => ({

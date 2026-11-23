@@ -7,56 +7,32 @@ description: Use when the user asks to add support for a new deployment target o
 
 ## Overview
 
-This MCP App uses a **platform-agnostic app factory** pattern. All business logic lives in `api/app.ts`, which exports a `fetch` handler. Each deployment target gets a thin entrypoint file (`api/main.<platform>.ts`) that starts the server using that platform's API.
+All business logic lives in `api/app.ts`, which exports `app = { fetch }` (a
+plain fetch handler, not a Hono app). Each target gets a thin entrypoint,
+`api/main.<platform>.ts`. `api/main.bun.ts` is the default (local dev and
+`bun run build:server`).
 
-## When to Use
+**`api/app.ts` never imports platform APIs.** Platform code goes in the
+entrypoint.
 
-- User asks to "add Workers support", "deploy to Deno", "add Lambda entrypoint"
-- User wants to deploy the app to a new platform
-- User asks to add a `wrangler.toml`, `Dockerfile`, or platform config
+Two facts shape every target:
 
-## Architecture
+1. **Bundle first.** `@decocms/runtime` ships raw `.ts` in `node_modules`,
+   which Node and Deno refuse to strip. Every non-Bun target runs a
+   `bun build` output, not the source.
+2. **The UI is a file.** The resources (`api/resources/*.ts`) read
+   `dist/client/index.html` with `readFile` from
+   `import.meta.dirname/../..`, so `bun run build:web` runs first and the
+   deployed package keeps `dist/client/index.html` next to `dist/server/`.
+   Workers have no filesystem: see Workers.
 
-```
-api/
-├── app.ts              # Platform-agnostic core (DO NOT put platform code here)
-├── main.bun.ts         # Bun entrypoint (default, used for local dev)
-├── main.workers.ts     # Cloudflare Workers entrypoint (if added)
-├── main.deno.ts        # Deno entrypoint (if added)
-├── main.node.ts        # Node.js entrypoint (if added)
-└── main.lambda.ts      # AWS Lambda entrypoint (if added)
-```
+## Node.js (verified on Node 24)
 
-**Key rule:** `api/app.ts` must never import platform-specific APIs. All platform specifics go in the entrypoint.
-
-## Step 1: Create the Entrypoint
-
-Create `api/main.<platform>.ts`. The entrypoint imports `app` from `./app.ts` and starts the server.
-
-### Cloudflare Workers
-
-```typescript
-// api/main.workers.ts
-import { app } from "./app.ts";
-
-export default { fetch: app.fetch };
+```bash
+bun add @hono/node-server
 ```
 
-### Deno
-
-```typescript
-// api/main.deno.ts
-import { app } from "./app.ts";
-
-const PORT = Number(Deno.env.get("PORT")) || 3001;
-Deno.serve({ port: PORT }, app.fetch);
-
-console.log(`\nMCP App: http://localhost:${PORT}/api/mcp\n`);
-```
-
-### Node.js
-
-```typescript
+```ts
 // api/main.node.ts
 import { serve } from "@hono/node-server";
 import { app } from "./app.ts";
@@ -67,25 +43,50 @@ serve({ fetch: app.fetch, port: PORT });
 console.log(`\nMCP App: http://localhost:${PORT}/api/mcp\n`);
 ```
 
-**Requires dependency:** `bun add @hono/node-server`
-
-### AWS Lambda
-
-```typescript
-// api/main.lambda.ts
-import { handle } from "hono/aws-lambda";
-import { app } from "./app.ts";
-
-export const handler = handle(app);
+```json
+"build:node": "bun run build:web && NODE_ENV=production bun build api/main.node.ts --target=node --minify --outfile=dist/server/main.node.js",
+"start:node": "node dist/server/main.node.js"
 ```
 
-**Requires dependency:** `bun add hono` (for `hono/aws-lambda` adapter)
+`node --experimental-strip-types api/main.node.ts` does **not** work
+(`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` on the runtime's `.ts`).
 
-## Step 2: Add Platform Config (if needed)
+## Deno (verified on Deno 2; 1.x fails)
 
-### Cloudflare Workers — `wrangler.toml`
+No `Deno` global, so `bun run check` passes as is:
+
+```ts
+// api/main.deno.ts
+import { app } from "./app.ts";
+
+export default { fetch: app.fetch };
+```
+
+```json
+"build:deno": "bun run build:web && NODE_ENV=production bun build api/main.deno.ts --target=node --minify --outfile=dist/server/main.deno.js",
+"start:deno": "deno serve --allow-net --allow-env --allow-read dist/server/main.deno.js"
+```
+
+Deno 1.x fails at request time (`process is not defined`); running the
+source fails like Node. `deno serve` takes `--port`.
+
+## Cloudflare Workers (verified with `wrangler dev` and a dry-run deploy)
+
+```bash
+bun add -d wrangler
+```
+
+The entrypoint is the same as Deno's:
+
+```ts
+// api/main.workers.ts
+import { app } from "./app.ts";
+
+export default { fetch: app.fetch };
+```
 
 ```toml
+# wrangler.toml
 name = "mcp-app"
 main = "api/main.workers.ts"
 compatibility_date = "2025-04-01"
@@ -93,96 +94,80 @@ compatibility_flags = ["nodejs_compat"]
 
 [build]
 command = "bun run build:web"
-
-[observability]
-enabled = true
 ```
 
-**Add `wrangler` as a dev dependency:**
+```json
+"dev:workers": "wrangler dev",
+"deploy:workers": "wrangler deploy"
+```
+
+**The resources must import the HTML instead of reading it** (on Workers
+`import.meta.dirname` is undefined and there is no disk). Wrangler bundles a
+text import with no extra `rules`:
+
+```ts
+// api/resources/<name>.ts — replace the readFile/BUNDLE lines with:
+import html from "../../dist/client/index.html" with { type: "text" };
+// …
+		read: async () => ({
+			uri: HELLO_RESOURCE_URI,
+			mimeType: RESOURCE_MIME_TYPE,
+			text: String(html), // String(): bun-types types *.html as an HTMLBundle
+		}),
+```
+
+This also works under Bun and Node, but the import needs
+`dist/client/index.html` to exist when the server starts: on a fresh clone
+`bun run dev` starts the API before Vite's first build and the API doesn't
+recover. With the text import, make `dev` build first:
+`"dev": "bun run build:web && concurrently …"`. Keep `readFile` (the
+template default) when Workers isn't a target.
+
+## AWS Lambda (typechecked and invoked locally; not deployed)
+
 ```bash
-bun add -d wrangler
+bun add hono
 ```
 
-### AWS Lambda
+`handle()` wants a Hono app, and `app` is a plain fetch handler: mount it.
 
-Requires a bundling step (e.g., esbuild or `bun build --target=node`) and an infrastructure config (SAM template, CDK, or Terraform). Ask the user which IaC tool they prefer.
+```ts
+// api/main.lambda.ts
+import { Hono } from "hono";
+import { handle } from "hono/aws-lambda";
+import { app } from "./app.ts";
 
-### Deno
-
-No config file needed. Optionally add a `deno.json` for import maps if the project uses npm packages:
+export const handler = handle(new Hono().mount("/", app.fetch));
+```
 
 ```json
-{
-  "imports": {
-    "@decocms/runtime": "npm:@decocms/runtime"
-  }
-}
+"build:lambda": "bun run build:web && NODE_ENV=production bun build api/main.lambda.ts --target=node --minify --outfile=dist/server/main.lambda.js"
 ```
 
-## Step 3: Add Package Scripts
+Ship `dist/server/main.lambda.js` with `dist/client/index.html` (or use the
+text import above, which puts the HTML inside the bundle). The adapter
+buffers responses, which is fine for these JSON-RPC calls. Infrastructure
+(SAM, CDK, Terraform) is the user's choice — ask.
 
-Add dev and deploy scripts for the new target in `package.json`:
+## Verify
 
-### Cloudflare Workers
-
-```json
-{
-  "dev:workers": "bun run build:web && wrangler dev",
-  "deploy": "bun run build:web && wrangler deploy"
-}
-```
-
-### Deno
-
-```json
-{
-  "dev:deno": "deno run --allow-net --allow-env --allow-read api/main.deno.ts"
-}
-```
-
-### Node.js
-
-```json
-{
-  "dev:node": "node --experimental-strip-types api/main.node.ts"
-}
-```
-
-## Step 4: Verify
-
-1. Run the new dev script and confirm the server starts
-2. Test the MCP endpoint: `curl http://localhost:3001/api/mcp`
-3. Run `bun run check` to ensure TypeScript is happy
+1. `bun run check` (tsc covers `api/**`, so the new entrypoint is checked).
+2. Build and start the target, then call the MCP endpoint and read the UI:
+   ```bash
+   U=http://localhost:3001/api/mcp
+   H='-H Content-Type:application/json -H Accept:application/json,text/event-stream'
+   curl -s $H $U -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}'
+   curl -s $H $U -d '{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"ui://mcp-app/hello"}}'
+   ```
+   The second answer carries the HTML.
 
 ## Common Mistakes
 
 | Mistake | Fix |
-|---------|-----|
-| Adding platform-specific code to `api/app.ts` | Keep `app.ts` agnostic — platform code goes in `main.<platform>.ts` only |
-| Forgetting `nodejs_compat` flag for Workers | Required for `node:` imports used by the runtime |
-| Not building web assets before Workers deploy | `wrangler.toml` build command should run `bun run build:web` |
-| Using `process.env` in Deno entrypoint | Use `Deno.env.get()` instead |
-
-## Reference: Existing Entrypoint
-
-The Bun entrypoint (`api/main.bun.ts`) is the reference implementation:
-
-```typescript
-import { app } from "./app.ts";
-
-const PORT = Number(process.env.PORT) || 3001;
-
-Bun.serve({
-  idleTimeout: 0,
-  hostname: "0.0.0.0",
-  port: PORT,
-  fetch: app.fetch,
-});
-
-const slug = process.env.WORKTREE_SLUG;
-const baseUrl = slug ? `http://${slug}.localhost` : `http://localhost:${PORT}`;
-
-console.log("");
-console.log(`MCP App: ${baseUrl}/api/mcp`);
-console.log("");
-```
+|---|---|
+| Platform code in `api/app.ts` | It goes in `main.<platform>.ts` only |
+| Running the `.ts` source on Node or Deno | Bundle with `bun build --target=node` and run the output |
+| Shipping the server without `dist/client/index.html` | The UI resource fails to read; ship it, or use the text import |
+| `readFile` on Workers | Text import of `dist/client/index.html` |
+| `handle(app)` for Lambda | `handle(new Hono().mount("/", app.fetch))` |
+| Forgetting `nodejs_compat` on Workers | Required for the runtime's `node:` imports |

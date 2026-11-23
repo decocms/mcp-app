@@ -25,8 +25,8 @@ hand-roll a second version inside a screen.
 
 ## 0. Plan the screen before the first edit
 
-**Look at the screen first.** `bun run dev` builds the bundle in watch mode
-and serves the MCP server on :3001; `bun start` tunnels it so deco Studio
+**Look at the screen first.** `bun start` runs `bun run dev` (the bundle in
+watch mode + the MCP server on :3001) behind a deco tunnel, so deco Studio
 can open it (README, "Connecting to deco Studio"). Screenshot the real
 screen with real data. Plans written from JSX alone miss what the eye lands
 on.
@@ -52,8 +52,11 @@ in your reply (before building) and in the PR. Five lines and a sketch:
 
 1. Open the kit: `web/components/ui/` (shadcn primitives: `button`, `card`,
    `table`, `empty`, `skeleton`, `spinner`, `alert-dialog`, `sonner`,
-   `field`, `item`…), `web/components/` (the app's own shared pieces),
-   `web/lib/utils.ts` (`cn`), `web/hooks/`.
+   `field`, `item`…), `web/components/` (the app's own shared pieces, once
+   it has any), `web/lib/` (`utils.ts` `cn`, `format.ts` dates, `tools.ts`
+   calling tools), `web/hooks/`, and the design-system utilities in
+   `web/globals.css` (`surface`, `text-meta`, `tnum`, `focus-ring`…,
+   `studio-ui`).
 2. Something close exists → use it. It's missing one behaviour → **add a prop
    to the shared component** (default = today's behaviour). Never copy it
    into a screen, never fork it "just for this screen".
@@ -102,13 +105,13 @@ reading the route. Take what you need as props.
 | A failure stays in its block | The page shows its error only when **its own** tool fails. A block's extra read that fails shows its error in the block — never a skeleton forever, never the page's error |
 | A list | Search over the rows (accent/case-insensitive), sortable headers, server paging with `Pagination`. Filter/sort/search state in the route (see below). One filter row on the right — not a row of selects |
 | A destructive confirm | `AlertDialog` — never `window.confirm` (the host sandbox swallows it) |
-| Dates and durations | one formatter module in `web/lib/` (`Intl.DateTimeFormat` / `date-fns`, already a dependency) — never `toLocaleString` ad hoc in a screen |
+| Dates and durations | `web/lib/format.ts` (`formatDateTime`; add the next formatter there, `Intl` / `date-fns`) — never `toLocaleString` ad hoc in a screen |
 | Anything that saves | skill `saving` |
 | Animation | skill `motion` |
 | View state that survives a reload (a tab, a filter, a search, an open panel) | the route — a path or search param of the TanStack Router in `web/router.tsx`, never `useState` (see below) |
 | Open a link | through the host: `useMcpApp()?.openLink({ url })`; `window.open` lands on a blank page in Studio |
 | Talk to the chat | `app.sendMessage(…)` / `app.updateModelContext(…)` (see `web/tools/hello`) |
-| Classes | Tailwind v4 + `cn()` (`@/lib/utils.ts`); colours only through the tokens in `web/globals.css` (they map the host's CSS variables) |
+| Classes | Tailwind v4 + `cn()` (`@/lib/utils.ts`); colours only through the tokens in `web/globals.css` (they map the host's CSS variables: `destructive`, `success`, `warning`, `muted`…) |
 
 **A reload lands where you were.** `web/router.tsx` runs TanStack Router on a
 memory history; inside Studio every navigation is reported to the host
@@ -139,11 +142,11 @@ the screen renders skeletons on "no data", every refresh blanks it.
 |---|---|
 | Icons | `lucide-react` only |
 | Primitives | `radix-ui` / `@base-ui/react` via the shadcn components in `web/components/ui` |
-| Toasts | `sonner` (`components/ui/sonner.tsx`; mount `<Toaster />` once in `web/app.tsx` the first time) |
+| Toasts | `sonner`: `toast.error("…")` from `"sonner"`; `<Toaster />` is mounted once in `web/app.tsx` |
 | Forms | `react-hook-form` + `@hookform/resolvers` + Zod (`components/ui/form.tsx`, `field.tsx`) |
 | Charts | `recharts` via `components/ui/chart.tsx` |
 | Dates | `date-fns` |
-| Data fetching / cache | `@tanstack/react-query` |
+| Data fetching / cache | `@tanstack/react-query`, through `web/lib/tools.ts` |
 | Routing | `@tanstack/react-router` (`web/router.tsx`) |
 
 Need something else (virtual lists, JS motion)? Add one shared wrapper in

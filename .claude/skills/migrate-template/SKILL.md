@@ -15,7 +15,7 @@ Template remote: `git@github.com:decocms/mcp-app.git`. Fetch latest, analyze cha
 4. **Dispatch 5 analysis subagents in parallel**
 5. Present migration plan — **wait for user approval**
 6. Apply changes (subagents per category)
-7. Verify: `bun install && bun run check && bun run ci:check && bun run build && bun test`
+7. Verify: `bun install && bun run check && bun run ci:check && bun run build && bun test . ./.claude/hooks`
 
 ## Step 1–3: Setup & Changelog
 
@@ -43,9 +43,9 @@ Each subagent compares `<base>..template/main` for its file category, checks if 
 |---|----------|-----------------|
 | 1 | **Infrastructure** | `vite.config.ts`, `tsconfig.json`, `biome.json`, `package.json` scripts, `.github/workflows/*`, `scripts/*`, `index.html` |
 | 2 | **Dependencies** | `package.json` deps/devDeps — new, removed, version bumps (flag breaking major bumps) |
-| 3 | **Framework Core** | `web/context.tsx`, `web/router.tsx`, `web/types.ts`, `web/app.tsx`, `api/app.ts`, `api/types/env.ts` |
-| 4 | **UI Components** | `web/components/ui/*`, `web/lib/*`, `web/hooks/*`, CSS files (shadcn = usually safe to replace) |
-| 5 | **Docs & Skills** | `CLAUDE.md`, `AGENTS.md`, `README.md`, `.claude/skills/**/*` |
+| 3 | **Framework Core** | `web/context.tsx`, `web/router.tsx`, `web/types.ts`, `web/app.tsx`, `web/lib/tools.ts`, `api/app.ts`, `api/types/env.ts`, `api/resources/*` |
+| 4 | **UI Components** | `web/components/ui/*`, `web/lib/*`, `web/hooks/*`, `web/globals.css` (shadcn = usually safe to replace; `globals.css` carries the design-system utilities the skills use) |
+| 5 | **Docs, Skills & Hooks** | `AGENTS.md` (`CLAUDE.md` is a symlink to it), `README.md`, `.claude/skills/**/*`, `.claude/hooks/*`, `.claude/settings.json` |
 
 ## Step 5: Migration Plan
 
@@ -74,7 +74,7 @@ Compile subagent results into:
 ## Step 7: Verify & Fix
 
 ```bash
-bun install && bun run check && bun run ci:check && bun run build && bun test
+bun install && bun run check && bun run ci:check && bun run build && bun test . ./.claude/hooks
 ```
 
 If checks fail, dispatch a subagent to diagnose: template incompatibility, bad merge, or missing dep.
@@ -84,16 +84,28 @@ If checks fail, dispatch a subagent to diagnose: template incompatibility, bad m
 | Category | Files | Strategy |
 |----------|-------|----------|
 | Infrastructure | `vite.config.ts`, `tsconfig.json`, `biome.json`, `index.html` | Replace |
-| Build Scripts | `package.json` scripts | Merge (user adds TOOL= entries) |
+| Build Scripts | `package.json` scripts | Merge (user-added scripts, e.g. a deploy target's) |
 | Dependencies | `package.json` deps/devDeps | Merge (keep user's, update template's) |
-| Framework Core | `web/context.tsx`, `web/router.tsx`, `web/types.ts`, `web/app.tsx` | Merge carefully |
-| Server Core | `api/app.ts`, `api/types/env.ts` | Merge carefully |
+| Framework Core | `web/context.tsx`, `web/router.tsx`, `web/types.ts`, `web/app.tsx`, `web/lib/tools.ts` | Merge carefully (`router.tsx`: keep the user's `TOOL_PAGES` entries and routes) |
+| Server Core | `api/app.ts`, `api/types/env.ts` | Merge carefully (keep the user's `resources` and `prompts`) |
 | UI Components | `web/components/ui/*`, `web/lib/*` | Replace (shadcn standard) |
-| Example Tool | `api/tools/hello.ts`, `web/tools/hello/` | Skip if user deleted |
-| User Tools | `api/tools/*`, `web/tools/*` (non-hello) | Never overwrite |
+| Example Tool | `api/tools/hello.ts`, `api/resources/hello.ts`, `api/prompts/hello.ts`, `web/tools/hello/` | Skip if user deleted |
+| User Tools | `api/tools/*`, `api/resources/*`, `web/tools/*` (non-hello) | Never overwrite |
 | CI/CD | `.github/workflows/*` | Replace unless customized |
-| Docs | `CLAUDE.md`, `README.md` | Merge |
-| Skills | `.claude/skills/*` | Add new, don't overwrite |
+| Docs | `AGENTS.md`, `README.md` | Merge |
+| Skills | `.claude/skills/*` | Add new; update the template's own skills unless the user edited them (then merge) |
+| Hooks | `.claude/hooks/*`, `.claude/settings.json` | Replace `hook.ts`; merge `rules.ts` and `settings.json` if the user added rules/permissions |
+
+## Forks from before the single bundle
+
+A fork older than template #5 builds one HTML per tool: `TOOL=<name>` in
+`dev:web` / `build:web`, an `@tool/*` alias and a rename-to-`<tool>.html`
+plugin in `vite.config.ts`, and resources reading `dist/client/<name>.html`.
+Move it over: keep each page as `web/tools/<name>/index.tsx` (default export)
+and register it in `TOOL_PAGES` in `web/router.tsx` (key = tool id); point
+every resource at `dist/client/index.html`; drop the `TOOL=` scripts, the
+alias (also in `tsconfig.json`) and the plugin. The `add-tool` skill is the
+target shape.
 
 ## Common Mistakes
 
