@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -6,118 +7,78 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useMcpApp, useMcpState } from "@/context.tsx";
+import { formatDateTime } from "@/lib/format.ts";
 import type { HelloInput, HelloOutput } from "../../../api/tools/hello.ts";
 
+/** The reference page: one frame drawn from the first paint, every McpStatus handled. */
 export default function HelloPage() {
 	const state = useMcpState<HelloInput, HelloOutput>();
 	const app = useMcpApp();
 
-	if (state.status === "initializing") {
+	if (state.status === "error" || state.status === "tool-cancelled") {
 		return (
-			<div className="flex items-center justify-center min-h-dvh p-6">
-				<div className="flex items-center gap-3 text-muted-foreground">
-					<span className="w-4 h-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
-					<span className="text-sm">Connecting to host...</span>
-				</div>
+			<div className="flex min-h-dvh items-center justify-center p-6">
+				<Alert variant="destructive" className="max-w-md">
+					<AlertTitle>
+						{state.status === "error" ? "Couldn't greet" : "Cancelled"}
+					</AlertTitle>
+					<AlertDescription>
+						{state.status === "error"
+							? (state.error ?? "Unknown error")
+							: "The tool call was cancelled."}
+					</AlertDescription>
+				</Alert>
 			</div>
 		);
 	}
 
-	if (state.status === "connected") {
-		return (
-			<div className="flex items-center justify-center min-h-dvh p-6">
-				<Card className="w-full max-w-md text-center">
-					<CardHeader>
-						<CardTitle>Hello MCP App</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="text-muted-foreground">
-							Connected. Call the <Badge variant="secondary">hello_world</Badge>{" "}
-							tool to see a greeting here.
-						</p>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
+	const result = state.status === "tool-result" ? state.toolResult : undefined;
 
-	if (state.status === "error") {
-		return (
-			<div className="flex items-center justify-center min-h-dvh p-6">
-				<Card className="w-full max-w-md border-destructive">
-					<CardHeader>
-						<CardTitle className="text-destructive">Error</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="text-sm text-destructive">
-							{state.error ?? "Unknown error"}
-						</p>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
-
-	if (state.status === "tool-cancelled") {
-		return (
-			<div className="flex items-center justify-center min-h-dvh p-6">
-				<Card className="w-full max-w-md border-destructive">
-					<CardHeader>
-						<CardTitle className="text-destructive">Cancelled</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="text-sm text-destructive">Tool call was cancelled.</p>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
-
-	if (state.status === "tool-input") {
-		return (
-			<div className="flex items-center justify-center min-h-dvh p-6">
-				<div className="flex items-center gap-3 text-muted-foreground">
-					<span className="w-4 h-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
-					<span className="text-sm">
-						Greeting {state.toolInput?.name ?? "someone"}...
-					</span>
-				</div>
-			</div>
-		);
-	}
-
-	// tool-result
 	return (
-		<div className="flex items-center justify-center min-h-dvh p-6">
+		<div className="flex min-h-dvh items-center justify-center p-6">
 			<Card className="w-full max-w-md text-center">
 				<CardHeader>
-					<CardTitle className="text-2xl">
-						{state.toolResult?.greeting}
+					<CardTitle className="font-display text-2xl">
+						{result ? (
+							result.greeting
+						) : state.status === "tool-input" ? (
+							<Skeleton className="mx-auto h-8 w-3/4" />
+						) : (
+							"Hello MCP App"
+						)}
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					{state.toolResult?.timestamp ? (
-						<p className="text-xs text-muted-foreground">
-							{new Date(state.toolResult.timestamp).toLocaleString()}
+					{result ? (
+						<>
+							<p className="text-meta">{formatDateTime(result.timestamp)}</p>
+							<Button
+								onClick={() => {
+									const name = state.toolInput?.name ?? "there";
+									app?.sendMessage({
+										role: "user",
+										content: [
+											{
+												type: "text",
+												text: `Please greet ${name} warmly and tell them a little about yourself — who you are, what you can help with, and something interesting about how you work.`,
+											},
+										],
+									});
+								}}
+							>
+								Send Message
+							</Button>
+						</>
+					) : state.status === "tool-input" ? (
+						<Skeleton className="mx-auto h-4 w-1/3" />
+					) : (
+						<p className="text-muted-foreground">
+							Call the <Badge variant="secondary">hello_world</Badge> tool to
+							see a greeting here.
 						</p>
-					) : null}
-					<Button
-						onClick={() => {
-							const name = state.toolInput?.name ?? "there";
-							app?.sendMessage({
-								role: "user",
-								content: [
-									{
-										type: "text",
-										text: `Please greet ${name} warmly and tell them a little about yourself — who you are, what you can help with, and something interesting about how you work.`,
-									},
-								],
-							});
-						}}
-					>
-						Send Message
-					</Button>
+					)}
 				</CardContent>
 			</Card>
 		</div>

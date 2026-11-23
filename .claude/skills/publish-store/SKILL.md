@@ -5,6 +5,17 @@ description: Use when the user asks to publish to the store, publish to the regi
 
 # Publishing to the Store
 
+> **Status (Nov 2026): the publish endpoint is gone.** deco Studio removed
+> publish requests and private registries (studio migration
+> `221-remove-private-registry`: the publish-request, API-key and
+> private-registry tables were dropped). `POST
+> https://studio.decocms.com/org/deco/registry/publish-request` answers
+> `404 {"error":"Not Found"}`, and this template's own last publish run
+> (Oct 2026) failed with it. So `.github/workflows/publish-registry.yml` no
+> longer runs on push — only by hand. Tell the user this before following
+> anything below; the rest documents the old flow (`app.json` fields still
+> describe the app) until Studio has a replacement.
+
 ## Overview
 
 MCP apps publish to the deco studio registry via HTTP POST to a `publish-request` endpoint. After submitting, the deco team reviews the request and notifies the requester by email whether it was approved, rejected, or needs adjustments.
@@ -164,8 +175,8 @@ The workflow builds a payload from your config. Here's how fields map:
 | `data.id` | `${scopeName}/${name}` |
 | `data.title` | `friendlyName` or `name` |
 | `data.description` | `description` or `null` |
-| `data.is_public` | `!(unlisted \|\| metadata.mesh_unlisted)` |
-| `data._meta["mcp.mesh"].verified` | `official` |
+| `data.is_public` | `!(unlisted ?? metadata.mesh_unlisted ?? false)` |
+| `data._meta["mcp.mesh"].verified` | `metadata.official`, else `official` (the template's `app.json` keeps it in `metadata`) |
 | `data._meta["mcp.mesh"].tags` | `metadata.tags` |
 | `data._meta["mcp.mesh"].categories` | First element of `metadata.categories` |
 | `data._meta["mcp.mesh"].friendly_name` | `friendlyName` |
@@ -192,14 +203,16 @@ The template includes `.github/workflows/publish-registry.yml` that automates pu
 
 ### Triggers
 
-- **Push to main**: When `deco.json`, `app.json`, or `README.md` changes
-- **Manual dispatch**: With optional `dry_run` flag
+- **Manual dispatch** only (Actions → Publish to Registry), with an optional
+  `dry_run` flag. It used to run on every push to `main` that touched
+  `deco.json`, `app.json`, `README.md` or the workflow; that was turned off
+  when the endpoint went away (see the top).
 
 ### Setup
 
 #### For the public deco store (default)
 
-No secrets needed. Just push to main.
+No secrets needed.
 
 #### For a private org store
 
@@ -241,8 +254,8 @@ curl -X POST <publish-url-from-studio> \
 | **400** | Invalid payload (schema validation failed) | Check `deco.json` fields, especially `short_description` (max 160) and `readme` (max 50,000) |
 | **401** | Missing or invalid API key | The org has **Require API Token** enabled. Generate a key in Studio and add it as `PUBLISH_API_KEY` secret. |
 | **403** | Publish requests not enabled | The **Publish Requests** toggle is disabled in the org's Studio settings |
-| **404** | Organization not found | Check `PUBLISH_URL` — the org slug must exist |
-| **409** | ID or title conflict | An app with the same `scopeName/name` or `friendlyName` already exists as an approved registry item |
+| **404** | `{"error":"Not Found","path":…}`: the endpoint doesn't exist (see the top). An org that doesn't exist answers 404 too | — |
+| **409** | ID or title conflict | An app with the same `scopeName/name` or `friendlyName` already exists as an approved registry item. The workflow logs "Already registered, skipping" and passes |
 | **429** | Rate limited | Too many requests. Wait and retry (check the rate limit settings in Studio) |
 
 ---
@@ -251,7 +264,7 @@ curl -X POST <publish-url-from-studio> \
 
 | Problem | Solution |
 |---------|----------|
-| Workflow doesn't trigger | Check that `deco.json` or `app.json` was changed in the push to `main` |
+| Workflow doesn't trigger | It's manual-only now: Actions → Publish to Registry → Run workflow |
 | 400 "Invalid publish request payload" | Validate your config: `short_description` max 160 chars, `readme` max 50,000 chars, `requester.email` must be valid email format |
 | 401 "API key required" | The org has **Require API Token** enabled in Studio. Generate a key and add it as `PUBLISH_API_KEY` repo secret. |
 | 401 "Invalid API key" | The token is wrong or was revoked. Generate a new one in Studio. |
@@ -274,5 +287,5 @@ curl -X POST <publish-url-from-studio> \
 7. Write a good `README.md` (used as the store readme, max 50,000 chars)
 8. Set `unlisted: false` if you want the app visible in store search
 9. For private org stores: get the publish URL and optional API token from Studio
-10. Push to `main` — the workflow publishes automatically
+10. Run the workflow by hand (Actions → Publish to Registry)
 11. Wait for email from deco team with approval/rejection/adjustments

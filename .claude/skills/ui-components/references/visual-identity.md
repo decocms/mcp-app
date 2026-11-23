@@ -54,8 +54,8 @@ shared.
 - **No uppercase labels, no `tracking-*`.** Sentence case everywhere.
 - Canonical sizes only: `text-meta`, `text-2xs`, `text-xs`, `text-sm`… — no
   `text-[Npx]`.
-- Numbers `tabular-nums`. Dates only through the app's one formatter in
-  `web/lib/` — never `toLocaleString` by hand.
+- Numbers `tabular-nums` (`tnum`). Dates only through the app's one
+  formatter, `web/lib/format.ts` — never `toLocaleString` by hand.
 
 ## 5. Colour
 
@@ -63,9 +63,8 @@ shared.
   no hex in components. A third-party brand mark is the exception, declared
   once as a CSS var.
 - `destructive` = failed / disconnected / negative; `success` = good;
-  `warning` = needs attention; `muted-foreground` = secondary text. (The
-  template ships `destructive` and `muted`; add `success` / `warning` tokens
-  to `web/globals.css` the first time a screen needs them.)
+  `warning` = needs attention; `muted-foreground` = secondary text (all in
+  `web/globals.css`, mapped to the host's colours).
 - **Colour encodes state, not decoration.** An accent (`brand`, if the app
   has one) = live, current, or yours.
 - Kinds may have a colour (a source, a visibility class) — one colour per

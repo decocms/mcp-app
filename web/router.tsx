@@ -7,6 +7,7 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { Spinner } from "./components/ui/spinner.tsx";
 import { useMcpApp, useMcpHostContext, useMcpState } from "./context.tsx";
 import HelloPage from "./tools/hello/index.tsx";
 
@@ -21,7 +22,7 @@ function ToolRouter() {
 		return (
 			<div className="flex items-center justify-center min-h-dvh p-6">
 				<div className="flex items-center gap-3 text-muted-foreground">
-					<span className="w-4 h-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
+					<Spinner />
 					<span className="text-sm">Connecting to host...</span>
 				</div>
 			</div>

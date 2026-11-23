@@ -23,7 +23,10 @@ Host → tool (_meta.ui.resourceUri) → bundle → web/app.tsx (McpProvider)
 
 Code: `web/context.tsx` (`McpProvider`, `useMcpState`, `useMcpApp`,
 `useMcpHostContext`, `useTheme`), `web/types.ts` (`McpStatus`),
-`web/router.tsx` (`TOOL_PAGES`, routes, the Studio reload round-trip).
+`web/router.tsx` (`TOOL_PAGES`, routes, the Studio reload round-trip),
+`web/lib/tools.ts` (`useToolQuery`, `useCallTool`: calling tools from a
+screen; `web/app.tsx` mounts react-query's `QueryClientProvider` and the
+`Toaster`).
 
 ## 1. A tool a screen calls
 
@@ -51,27 +54,46 @@ opens a UI). For a screen:
    ```tsx
    export default function ItemsPage() {
    	const state = useMcpState<ListItemsInput, ListItemsOutput>();
-   	if (state.status === "error") return <ErrorBlock message={state.error} />;
-   	if (state.status !== "tool-result") return <ItemsSkeleton />;
+   	if (state.status === "error" || state.status === "tool-cancelled")
+   		return <Alert variant="destructive">…{state.error}</Alert>;
+   	// the frame now; <Skeleton /> rows until state.status === "tool-result"
    	…
    }
    ```
    Structure first: once the tool is known, draw the real frame and
    skeleton rows, not a centered spinner (`ui-components`).
 2. Register it in `TOOL_PAGES` in `web/router.tsx` (key = the tool's `id`).
-3. Check it in Studio: `bun run dev` + `bun start`, connect the tunnel URL,
-   call the tool.
+3. Check it in Studio: `bun start` (it runs `bun run dev` behind a tunnel),
+   connect the MCP URL it prints, call the tool.
 
 Data inside a screen:
 
 | Need | Use |
 |---|---|
 | The input/result of the tool that opened it | `useMcpState<Input, Output>()` |
-| Read extra data (a panel, a block) | `useMcpApp()?.callServerTool({ name, arguments })` — wrap it in **one** shared hook in `web/lib/` (react-query's `useQuery` is installed; mount its `QueryClientProvider` in `web/app.tsx` the first time) — not a `useEffect` + `useState` per screen |
-| Write, then refresh what's on screen | the same call for the write, then invalidate/re-read in place. In a control: skill `saving` |
-| Another screen of the same tool (tab, drill-down) | a child route in `web/router.tsx` + `<Link>` / `useNavigate()` |
-| View state that survives a reload (filters, tab, selection, an open panel) | the route: a path segment or a search param (`validateSearch` with Zod) — never `useState` |
+| Read extra data (a panel, a block) | `useToolQuery<Output>("get_item", { id })` from `web/lib/tools.ts` (react-query, keyed by name + args; `data` / `isPending` / `error` / `refetch`) — never a `useEffect` + `useState` per screen, never `callServerTool` by hand |
+| Write, then refresh what's on screen | `const call = useCallTool()` → `await call("archive_item", { id })` (throws the tool's error), then `queryClient.invalidateQueries({ queryKey: ["list_items"] })` (`useQueryClient()`). In a control: skill `saving` |
+| Another view of the same tool (tab, filter, selected row, open panel) | a search param — see below |
+| A drill-down with its own path (`/items/$id`) | a route in `web/router.tsx` next to `indexRoute` + `<Link>` / `useNavigate()`. Routes are shared by every tool's page (one router), so prefix them with the tool (`/notes/$id`) |
+| View state that survives a reload | the route (path or search) — never `useState` |
 | The host (open a link, theme, safe area, display mode) | `useMcpApp()` (`openLink`, `sendMessage`, `updateModelContext`), `useMcpHostContext()`, `useTheme()` |
+
+**View state in the search params.** The page route (`/`) is shared by every
+tool, so a page doesn't declare `validateSearch` on it; it parses its own
+params with Zod (`.catch` = the default, so a bad or missing param can't
+break the page) and writes them with `navigate`:
+
+```tsx
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { z } from "zod";
+
+const View = z.object({ tab: z.enum(["all", "starred"]).catch("all") });
+
+const { tab } = View.parse(useSearch({ strict: false }));
+const navigate = useNavigate();
+const setTab = (tab: "all" | "starred") =>
+	navigate({ to: ".", search: (s: Record<string, unknown>) => ({ ...s, tab }) });
+```
 
 **A Studio reload lands where you were.** Every navigation after the first
 is reported to Studio as `studio://navigate?args={"_route":"<href>"}`; on

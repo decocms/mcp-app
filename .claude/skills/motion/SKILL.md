@@ -28,9 +28,9 @@ animation on top.
 
 1. **Hover, press, focus = CSS**, not JS: `transition-colors`,
    `transition-shadow`, `active:scale-[0.98]` with `duration-150` (the
-   `Button` already does it).
-2. **Tokens, not numbers.** 120 / 180 / 250 ms, ease-out (`ease-out`, or an
-   `--ease-out-cubic` token added once to `web/globals.css`). A keyframe
+   `Button` already transitions its colours; it has no press scale).
+2. **Tokens, not numbers.** 120 / 180 / 250 ms, ease-out (`ease-out`, or
+   `ease-out-cubic`, the token in `web/globals.css`). A keyframe
    recipe (an entrance like `animate-rise`) goes in `web/globals.css` once
    and is reused — never `@keyframes` in a screen.
 3. **Always `prefers-reduced-motion`**: a CSS animation sits under
@@ -51,6 +51,6 @@ animation on top.
 // before: custom keyframes in the screen's css
 <div className="card pulse-on-hover" />
 
-// after: a CSS transition, no JS, no keyframes
-<div className="rounded-xl border bg-card transition-shadow duration-150 hover:shadow-md" />
+// after: the surface vocabulary (web/globals.css) — a CSS transition, no JS, no keyframes
+<div className="surface surface-interactive" />
 ```
